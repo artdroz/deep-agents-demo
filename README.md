@@ -114,7 +114,7 @@ uv run python main.py
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and ask the assistant to research any topic.
+Open [http://localhost:3000](http://localhost:3000) and describe the change you want.
 
 ## Key Patterns
 
@@ -123,7 +123,7 @@ Open [http://localhost:3000](http://localhost:3000) and ask the assistant to res
 This demo uses local React state with `useDefaultTool` instead of `useCoAgent` to avoid type mismatches between Python's FilesystemMiddleware (Dict) and TypeScript (Array):
 
 ```typescript
-const [state, setState] = useState<ResearchState>(INITIAL_STATE);
+const [state, setState] = useState<WorkspaceState>(INITIAL_STATE);
 
 useDefaultTool({
   render: (props) => {
