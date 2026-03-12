@@ -238,5 +238,8 @@ A dedicated review persona could watch for new PRs, run tests, check for regress
 ### Learning from Feedback
 When PRs are rejected or require changes, the agent could learn from review comments and store patterns in memory — improving code quality over successive runs.
 
+### Browser Tool Integration
+Equip agents with a headless browser tool to interact with web UIs, verify frontend changes visually, scrape documentation, and test deployed endpoints. This would enable the agent to validate its own PRs against a preview deployment before requesting review.
+
 ### Cross-Repository Orchestration
 Extend the agent to work across multiple repositories — updating an API server and its client SDK in coordinated PRs with compatible version bumps.
