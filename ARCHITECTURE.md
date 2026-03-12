@@ -12,7 +12,7 @@ graph TB
         direction TB
 
         subgraph Control["Control Plane"]
-            Sched["Schedule Controller<br/><code>*/5 * * * *</code>"]
+            Sched["Schedule Controller"]
             Recon["AgentRun Reconciler"]
             ChanR["Channel Router"]
             MemMgr["Memory Manager"]
@@ -23,10 +23,10 @@ graph TB
         Recon -->|lifecycle events| NATS
         ChanR <-->|message routing| NATS
 
-        subgraph Agent["Agent Pod (ephemeral)"]
+        subgraph Agent["Agent Pod · ephemeral"]
             direction LR
-            Runner["Agent Runner<br/>LLM tool loop"]
-            Sidecar["Skill Sidecar<br/>gh · git · deepagents-cli"]
+            Runner["Agent Runner"]
+            Sidecar["Skill Sidecar"]
             IPC["/ipc + /memory"]
             Runner <-->|execute_command| Sidecar
             Runner -->|read/write| IPC
@@ -36,26 +36,34 @@ graph TB
         IPC -->|fsnotify| NATS
 
         subgraph Chan["Channel Pods"]
-            Webex["Webex Channel<br/>WebSocket + REST"]
+            Webex["Webex Channel"]
         end
 
         NATS <-->|outbound messages| Chan
         MemMgr -->|patches ConfigMap| IPC
     end
 
-    GH["GitHub<br/>Issues · PRs · Labels"]
-    WX["Webex Space<br/>Notifications"]
+    GH["GitHub"]
+    WX["Webex Space"]
 
     Sidecar <-->|gh cli| GH
     Webex <-->|Bot API| WX
 
-    style K8s fill:#1a1a2e,stroke:#16213e,color:#e0e0e0
-    style Control fill:#0f3460,stroke:#1a1a6e,color:#e0e0e0
-    style Agent fill:#533483,stroke:#5b2c8e,color:#e0e0e0
-    style Chan fill:#0f3460,stroke:#1a1a6e,color:#e0e0e0
-    style NATS fill:#e94560,stroke:#c0392b,color:#fff
-    style GH fill:#24292e,stroke:#444,color:#fff
-    style WX fill:#00bceb,stroke:#0098c7,color:#fff
+    style K8s fill:#161b22,stroke:#30363d,color:#c9d1d9
+    style Control fill:#1f6feb,stroke:#388bfd,color:#fff
+    style Agent fill:#8957e5,stroke:#a371f7,color:#fff
+    style Chan fill:#1f6feb,stroke:#388bfd,color:#fff
+    style NATS fill:#da3633,stroke:#f85149,color:#fff
+    style GH fill:#30363d,stroke:#484f58,color:#c9d1d9
+    style WX fill:#1a7f37,stroke:#3fb950,color:#fff
+    style Sched fill:#1f6feb,stroke:#388bfd,color:#fff
+    style Recon fill:#1f6feb,stroke:#388bfd,color:#fff
+    style ChanR fill:#1f6feb,stroke:#388bfd,color:#fff
+    style MemMgr fill:#1f6feb,stroke:#388bfd,color:#fff
+    style Runner fill:#8957e5,stroke:#a371f7,color:#fff
+    style Sidecar fill:#8957e5,stroke:#a371f7,color:#fff
+    style IPC fill:#8957e5,stroke:#a371f7,color:#fff
+    style Webex fill:#1f6feb,stroke:#388bfd,color:#fff
 ```
 
 ---
@@ -64,26 +72,28 @@ graph TB
 
 ```mermaid
 graph LR
-    A["⏰ Schedule<br/>triggers run"] --> B["📋 List issues<br/><code>gh issue list</code>"]
-    B --> C{"Eligible<br/>issue?"}
-    C -->|No| Stop["🛑 Stop"]
-    C -->|Yes| D["🔒 Lock issue<br/>label + assign"]
-    D --> E["📂 Clone repo<br/>create branch"]
-    E --> F["🤖 deepagents-cli<br/>implement changes"]
-    F --> G["📝 Commit + push"]
-    G --> H{"Out-of-scope<br/>work found?"}
-    H -->|Yes| I["📌 Create<br/>follow-up issues"]
-    H -->|No| J["🔀 Create PR"]
+    A["Schedule triggers"] --> B["List issues"]
+    B --> C{"Eligible?"}
+    C -->|No| Stop["Stop"]
+    C -->|Yes| D["Lock issue"]
+    D --> E["Clone + branch"]
+    E --> F["deepagents-cli"]
+    F --> G["Commit + push"]
+    G --> H{"Follow-ups?"}
+    H -->|Yes| I["Create issues"]
+    H -->|No| J["Create PR"]
     I --> J
-    J --> K["🔓 Remove<br/>in-progress label"]
-    K --> L["💬 Webex<br/>notification"]
-    L --> M["💾 Save to<br/>memory"]
+    J --> K["Unlock label"]
+    K --> L["Webex notify"]
+    L --> M["Save memory"]
 
-    style A fill:#e94560,color:#fff
-    style F fill:#533483,color:#fff
-    style J fill:#0f3460,color:#fff
-    style L fill:#00bceb,color:#fff
-    style Stop fill:#555,color:#fff
+    style A fill:#da3633,stroke:#f85149,color:#fff
+    style F fill:#8957e5,stroke:#a371f7,color:#fff
+    style J fill:#1f6feb,stroke:#388bfd,color:#fff
+    style L fill:#1a7f37,stroke:#3fb950,color:#fff
+    style Stop fill:#30363d,stroke:#484f58,color:#c9d1d9
+    style C fill:#d29922,stroke:#e3b341,color:#fff
+    style H fill:#d29922,stroke:#e3b341,color:#fff
 ```
 
 ---
@@ -91,28 +101,27 @@ graph LR
 ## Task Management Lifecycle
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Backlog: Issue created<br/>label: coding-agent
+graph LR
+    New["New Issue"] -->|agent claims| Locked["Locked"]
+    Locked -->|deepagents runs| Impl["Implementing"]
+    Impl -->|push + PR| PR["PR Created"]
+    PR -->|label removed| Review["In Review"]
+    Review -->|merged| Done["Closed"]
+    Impl -->|too complex| New
 
-    Backlog --> Locked: Agent claims<br/>+in-progress label<br/>+assignee
-
-    Locked --> Implementing: deepagents-cli<br/>runs headless
-
-    Implementing --> PRCreated: git push +<br/>gh pr create
-
-    PRCreated --> Review: in-progress<br/>label removed
-
-    Review --> [*]: PR merged<br/>issue closed
-
-    Implementing --> Backlog: Too complex<br/>label removed
-
-    note right of Locked
-        Three-layer dedup:
-        1. in-progress label (primary)
-        2. Assignee check (secondary)
-        3. Agent memory (tertiary)
-    end note
+    style New fill:#30363d,stroke:#484f58,color:#c9d1d9
+    style Locked fill:#da3633,stroke:#f85149,color:#fff
+    style Impl fill:#8957e5,stroke:#a371f7,color:#fff
+    style PR fill:#1f6feb,stroke:#388bfd,color:#fff
+    style Review fill:#d29922,stroke:#e3b341,color:#fff
+    style Done fill:#1a7f37,stroke:#3fb950,color:#fff
 ```
+
+**Three-layer deduplication** prevents concurrent runs from claiming the same issue:
+
+1. **`in-progress` label** — primary lock, added before work begins
+2. **Assignee** — secondary signal, agent assigns itself via `gh issue edit --add-assignee @me`
+3. **Persistent memory** — tertiary signal, completed issue numbers stored across runs
 
 ---
 
@@ -125,10 +134,13 @@ Each agent instance has a **persistent ConfigMap** mounted at `/memory/MEMORY.md
 ```mermaid
 graph LR
     A["Agent Run N"] -->|writes markers| B["Controller"]
-    B -->|patches| C["ConfigMap<br/><code>coding-agent-memory</code>"]
+    B -->|patches| C["ConfigMap"]
     C -->|mounted into| D["Agent Run N+1"]
 
-    style C fill:#0f3460,color:#fff
+    style A fill:#8957e5,stroke:#a371f7,color:#fff
+    style B fill:#1f6feb,stroke:#388bfd,color:#fff
+    style C fill:#da3633,stroke:#f85149,color:#fff
+    style D fill:#8957e5,stroke:#a371f7,color:#fff
 ```
 
 Memory tracks completed issues, PR URLs, and lessons learned — preventing duplicate work across runs.
@@ -154,12 +166,14 @@ Communication flows through a filesystem-based IPC bridge:
 
 ```mermaid
 graph LR
-    A["Agent writes<br/>/ipc/messages/*.json"] -->|fsnotify| B["IPC Bridge"]
+    A["/ipc/messages/"] -->|fsnotify| B["IPC Bridge"]
     B -->|publish| C["NATS"]
     C -->|subscribe| D["Channel Pod"]
-    D -->|REST API| E["Webex / Slack"]
+    D -->|REST API| E["Webex"]
 
-    style C fill:#e94560,color:#fff
+    style A fill:#8957e5,stroke:#a371f7,color:#fff
+    style C fill:#da3633,stroke:#f85149,color:#fff
+    style E fill:#1a7f37,stroke:#3fb950,color:#fff
 ```
 
 ### Supervisor
@@ -197,15 +211,17 @@ Each agent pod is fully isolated — its own filesystem, network, and sidecar to
 
 ```mermaid
 graph TB
-    Planner["Planner Agent"] -->|architecture spec| Impl1["Implementer A"]
-    Planner -->|architecture spec| Impl2["Implementer B"]
+    Planner["Planner Agent"] -->|spec| Impl1["Implementer A"]
+    Planner -->|spec| Impl2["Implementer B"]
     Impl1 -->|PR| Reviewer["Review Agent"]
     Impl2 -->|PR| Reviewer
-    Reviewer -->|approve / request changes| Impl1
-    Reviewer -->|approve / request changes| Impl2
+    Reviewer -->|feedback| Impl1
+    Reviewer -->|feedback| Impl2
 
-    style Planner fill:#533483,color:#fff
-    style Reviewer fill:#0f3460,color:#fff
+    style Planner fill:#8957e5,stroke:#a371f7,color:#fff
+    style Impl1 fill:#1f6feb,stroke:#388bfd,color:#fff
+    style Impl2 fill:#1f6feb,stroke:#388bfd,color:#fff
+    style Reviewer fill:#1a7f37,stroke:#3fb950,color:#fff
 ```
 
 Currently each agent run is independent. Future work could enable agents to coordinate — one agent plans the architecture while another implements, with a third reviewing the PR.
