@@ -1,11 +1,19 @@
-"""
-Deep Research Assistant - FastAPI Server
+"""main.py
 
-Serves the Deep Research Agent via AG-UI protocol for CopilotKit integration.
-The agent uses Tavily for web research and Deep Agents for planning and filesystem operations.
+FastAPI server for the demo agent.
+
+This server exposes an AG-UI endpoint used by the Next.js frontend.
+The agent supports multiple modes via AGENT_MODE:
+
+- research (default)
+- coding
+
+Tool-call emission is configured per-mode to avoid leaking internal subagent
+noise into the chat UI.
 """
 
 import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -18,13 +26,12 @@ from agent import build_agent
 load_dotenv()
 
 app = FastAPI(
-    title="Deep Research Assistant",
-    description="A research assistant powered by Deep Agents and CopilotKit",
+    title="Deep Agents Demo",
+    description="A demo agent powered by Deep Agents and CopilotKit",
     version="1.0.0",
 )
 
 # Enable CORS for frontend communication
-# Using "*" for demo purposes - allows any origin including localhost and Railway deployments
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,50 +43,68 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    """Health check endpoint for monitoring and Railway deployments"""
-    return {"status": "ok", "service": "deep-research-agent", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "service": "deep-agents-demo-agent",
+        "version": "1.0.0",
+        "mode": (os.environ.get("AGENT_MODE") or "research"),
+    }
 
 
-# Build and register the Deep Research Agent
+def _agent_mode() -> str:
+    mode = (os.environ.get("AGENT_MODE") or "research").strip().lower()
+    return "coding" if mode == "coding" else "research"
+
+
+# Build and register the agent
 try:
     agent_graph = build_agent()
 
-    # Configure which tool calls to emit to the frontend
-    # Only emit main agent tools - suppress internal tools (internet_search from research subagent)
-    # This prevents subagent tool calls from appearing as JSON noise in the chat
-    agui_config = copilotkit_customize_config(
-        emit_tool_calls=[
+    mode = _agent_mode()
+
+    # Configure which tool calls to emit to the frontend.
+    # In research mode, suppress internal subagent noise (internet_search).
+    # In coding mode, emit the core workspace tools.
+    if mode == "coding":
+        emit_tool_calls = [
+            "execute_command",
+            "list_directory",
+            "read_file",
+            "write_file",
+            "edit_file",
+            "write_todos",
+            "research",
+        ]
+    else:
+        emit_tool_calls = [
             "research",
             "write_todos",
             "write_file",
             "read_file",
             "edit_file",
         ]
-    )
 
-    # Add recursion limit for complex research tasks (6+ research calls + file operations)
+    agui_config = copilotkit_customize_config(emit_tool_calls=emit_tool_calls)
     agui_config["recursion_limit"] = 100
 
-    # Add AG-UI endpoint at root path for CopilotKit frontend
     add_langgraph_fastapi_endpoint(
         app=app,
         agent=LangGraphAGUIAgent(
-            name="research_assistant",
-            description="A deep research assistant that plans, searches, and synthesizes research reports",
+            name="deep_agents_demo",
+            description="A demo agent that can run in research or coding mode",
             graph=agent_graph,
             config=agui_config,
         ),
         path="/",
     )
 
-    print("[SERVER] Deep Research Agent registered at /")
+    print(f"[SERVER] Agent registered at / (mode={mode})")
 except Exception as e:
     print(f"[ERROR] Failed to build agent: {e}")
     raise
 
 
 def main():
-    """Run the server with uvicorn"""
     import uvicorn
 
     host = os.getenv("SERVER_HOST", "0.0.0.0")
