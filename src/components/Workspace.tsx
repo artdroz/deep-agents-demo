@@ -2,11 +2,26 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, ListTodo, FileText, Download, Globe, Check, Circle, CircleDot, X } from "lucide-react";
-import { ResearchState, Todo, ResearchFile, Source } from "@/types/research";
+import type { WorkspaceState, Todo } from "@/types/workspace";
 import { FileViewerModal } from "@/components/FileViewerModal";
 
+// Legacy UI expects a flat file list and sources.
+// Keep these local types to avoid coupling the old research UI to the new workspace model.
+interface LegacyFile {
+  path: string;
+  content: string;
+  createdAt: string;
+}
+
+interface LegacySource {
+  url: string;
+  title: string;
+  content?: string;
+  status: "found" | "scraped" | "failed";
+}
+
 // Helper function to download file content
-function downloadFile(file: ResearchFile) {
+function downloadFile(file: LegacyFile) {
   const blob = new Blob([file.content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -19,7 +34,7 @@ function downloadFile(file: ResearchFile) {
 }
 
 interface WorkspaceProps {
-  state: ResearchState;
+  state: WorkspaceState;
 }
 
 // Collapsible section component with smooth transitions
@@ -40,22 +55,19 @@ function Section({
 
   return (
     <div className="workspace-section">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="workspace-section-header w-full transition-all duration-200"
-      >
+      <button onClick={() => setIsOpen(!isOpen)} className="workspace-section-header w-full transition-all duration-200">
         <div className="flex items-center gap-3">
           <Icon className="w-5 h-5 text-[var(--color-text-secondary)]" />
           <span className="font-semibold text-[var(--color-text-primary)]">{title}</span>
           {badge !== undefined && badge > 0 && (
             <span
               style={{
-                background: 'var(--color-accent)',
-                color: 'var(--color-background)',
-                padding: 'var(--space-1) var(--space-2)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'var(--font-semibold)',
-                borderRadius: 'var(--radius-lg)'
+                background: "var(--color-accent)",
+                color: "var(--color-background)",
+                padding: "var(--space-1) var(--space-2)",
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--font-semibold)",
+                borderRadius: "var(--radius-lg)",
               }}
             >
               {badge}
@@ -77,17 +89,20 @@ function Section({
 function TodoList({ todos }: { todos: Todo[] }) {
   if (todos.length === 0) {
     return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
+      <div
+        className="empty-state"
+        style={{ paddingTop: "var(--space-8)", paddingBottom: "var(--space-8)", animation: "fadeIn 0.4s ease" }}
+      >
         <ListTodo
           size={32}
           strokeWidth={1.5}
           style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
+            color: "var(--color-text-tertiary)",
+            marginBottom: "var(--space-3)",
           }}
         />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No tasks yet</p>
-        <p className="text-xs mt-1">Research tasks will appear here</p>
+        <p style={{ fontSize: "var(--text-sm)" }}>No tasks yet</p>
+        <p className="text-xs mt-1">Tasks will appear here</p>
       </div>
     );
   }
@@ -98,29 +113,15 @@ function TodoList({ todos }: { todos: Todo[] }) {
         <div
           key={todo.id}
           className={`todo-item animate-fadeSlideIn ${
-            todo.status === "completed"
-              ? "todo-item-completed"
-              : todo.status === "in_progress"
-              ? "todo-item-inprogress"
-              : "todo-item-pending"
+            todo.status === "completed" ? "todo-item-completed" : todo.status === "in_progress" ? "todo-item-inprogress" : "todo-item-pending"
           }`}
         >
           <span
             className={`${
-              todo.status === "completed"
-                ? "status-completed"
-                : todo.status === "in_progress"
-                ? "status-inprogress"
-                : "status-pending"
+              todo.status === "completed" ? "status-completed" : todo.status === "in_progress" ? "status-inprogress" : "status-pending"
             }`}
           >
-            {todo.status === "completed" ? (
-              <Check size={14} />
-            ) : todo.status === "in_progress" ? (
-              <CircleDot size={14} />
-            ) : (
-              <Circle size={14} />
-            )}
+            {todo.status === "completed" ? <Check size={14} /> : todo.status === "in_progress" ? <CircleDot size={14} /> : <Circle size={14} />}
           </span>
           <span className="text-sm">{todo.content}</span>
         </div>
@@ -130,26 +131,23 @@ function TodoList({ todos }: { todos: Todo[] }) {
 }
 
 // File list component with click-to-view and animations
-function FileList({
-  files,
-  onFileClick,
-}: {
-  files: ResearchFile[];
-  onFileClick: (file: ResearchFile) => void;
-}) {
+function FileList({ files, onFileClick }: { files: LegacyFile[]; onFileClick: (file: LegacyFile) => void }) {
   if (files.length === 0) {
     return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
+      <div
+        className="empty-state"
+        style={{ paddingTop: "var(--space-8)", paddingBottom: "var(--space-8)", animation: "fadeIn 0.4s ease" }}
+      >
         <FileText
           size={32}
           strokeWidth={1.5}
           style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
+            color: "var(--color-text-tertiary)",
+            marginBottom: "var(--space-3)",
           }}
         />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No files yet</p>
-        <p className="text-xs mt-1">Research artifacts will appear here</p>
+        <p style={{ fontSize: "var(--text-sm)" }}>No files yet</p>
+        <p className="text-xs mt-1">Files will appear here</p>
       </div>
     );
   }
@@ -157,19 +155,13 @@ function FileList({
   return (
     <div className="space-y-2">
       {files.map((file, i) => (
-        <div
-          key={`${file.path}-${i}`}
-          className="file-item animate-fadeSlideIn"
-          onClick={() => onFileClick(file)}
-        >
+        <div key={`${file.path}-${i}`} className="file-item animate-fadeSlideIn" onClick={() => onFileClick(file)}>
           <div className="flex items-center gap-3">
             <div className="file-item-icon">
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                {file.path.split("/").pop()}
-              </p>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">{file.path.split("/").pop()}</p>
               <p className="text-xs text-[var(--color-text-tertiary)]">{file.path}</p>
             </div>
           </div>
@@ -191,19 +183,22 @@ function FileList({
 }
 
 // Source list component with error states and animations
-function SourceList({ sources }: { sources: Source[] }) {
+function SourceList({ sources }: { sources: LegacySource[] }) {
   if (sources.length === 0) {
     return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
+      <div
+        className="empty-state"
+        style={{ paddingTop: "var(--space-8)", paddingBottom: "var(--space-8)", animation: "fadeIn 0.4s ease" }}
+      >
         <Globe
           size={32}
           strokeWidth={1.5}
           style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
+            color: "var(--color-text-tertiary)",
+            marginBottom: "var(--space-3)",
           }}
         />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No sources yet</p>
+        <p style={{ fontSize: "var(--text-sm)" }}>No sources yet</p>
         <p className="text-xs mt-1">Web sources will appear here</p>
       </div>
     );
@@ -219,19 +214,13 @@ function SourceList({ sources }: { sources: Source[] }) {
         >
           <div className="flex items-center gap-3">
             <span
-              className={`source-indicator ${
-                source.status === "scraped"
-                  ? "status-completed"
-                  : source.status === "failed"
-                  ? ""
-                  : "status-pending"
-              }`}
-              style={source.status === "failed" ? { color: 'var(--color-error)' } : undefined}
+              className={`source-indicator ${source.status === "scraped" ? "status-completed" : source.status === "failed" ? "" : "status-pending"}`}
+              style={source.status === "failed" ? { color: "var(--color-error)" } : undefined}
             >
               {source.status === "scraped" ? (
-                <Check size={14} style={{ color: 'var(--color-success)' }} />
+                <Check size={14} style={{ color: "var(--color-success)" }} />
               ) : source.status === "failed" ? (
-                <X size={14} style={{ color: 'var(--color-error)' }} />
+                <X size={14} style={{ color: "var(--color-error)" }} />
               ) : (
                 <Circle size={14} />
               )}
@@ -264,21 +253,22 @@ function SourceList({ sources }: { sources: Source[] }) {
 
 // Main Workspace component
 export function Workspace({ state }: WorkspaceProps) {
-  const { todos, files, sources } = state;
+  const todos = state.todos;
+  const files = (state.files ?? []) as LegacyFile[];
+  const sources = (state.sources ?? []) as LegacySource[];
+
   const fileCount = files.length;
   const todoCount = todos.length;
   const sourceCount = sources.length;
 
   // State for file viewer modal
-  const [selectedFile, setSelectedFile] = useState<ResearchFile | null>(null);
+  const [selectedFile, setSelectedFile] = useState<LegacyFile | null>(null);
 
   return (
     <div className="workspace-panel p-6">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Workspace</h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Research progress and artifacts
-        </p>
+        <p className="text-sm text-[var(--color-text-secondary)]">Research progress and artifacts</p>
       </div>
 
       <Section title="Research Plan" icon={ListTodo} badge={todoCount}>
@@ -294,7 +284,7 @@ export function Workspace({ state }: WorkspaceProps) {
       </Section>
 
       {/* File Viewer Modal */}
-      <FileViewerModal file={selectedFile} onClose={() => setSelectedFile(null)} />
+      <FileViewerModal file={selectedFile as any} onClose={() => setSelectedFile(null)} />
     </div>
   );
 }
