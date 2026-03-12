@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, ListTodo, FileText, Download, Globe, Check, Circle, CircleDot, X } from "lucide-react";
 import { ResearchState, Todo, ResearchFile, Source } from "@/types/research";
 import { FileViewerModal } from "@/components/FileViewerModal";
+import { GitHubPanel } from "@/components/GitHubPanel";
 
 // Helper function to download file content
 function downloadFile(file: ResearchFile) {
@@ -272,15 +273,35 @@ export function Workspace({ state }: WorkspaceProps) {
   // State for file viewer modal
   const [selectedFile, setSelectedFile] = useState<ResearchFile | null>(null);
 
+  // Workspace tabs
+  const [activeView, setActiveView] = useState<"workspace" | "github">("workspace");
+
   return (
     <div className="workspace-panel p-6">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Workspace</h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Research progress and artifacts
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Workspace</h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">Research progress and artifacts</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              className={`px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border-glass)] transition-colors ${activeView === "workspace" ? "bg-[var(--color-glass-subtle)]" : "hover:bg-[var(--color-glass-subtle)]"}`}
+              onClick={() => setActiveView("workspace")}
+            >
+              Workspace
+            </button>
+            <button
+              className={`px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border-glass)] transition-colors ${activeView === "github" ? "bg-[var(--color-glass-subtle)]" : "hover:bg-[var(--color-glass-subtle)]"}`}
+              onClick={() => setActiveView("github")}
+            >
+              GitHub
+            </button>
+          </div>
+        </div>
       </div>
 
+      {activeView === "workspace" ? (
       <Section title="Research Plan" icon={ListTodo} badge={todoCount}>
         <TodoList todos={todos} />
       </Section>
@@ -292,6 +313,14 @@ export function Workspace({ state }: WorkspaceProps) {
       <Section title="Sources" icon={Globe} badge={sourceCount}>
         <SourceList sources={sources} />
       </Section>
+      ) : (
+        <GitHubPanel
+          state={state.github}
+          onAssignIssue={(issue) => {
+            console.log("[UI] Assign to Agent clicked", issue);
+          }}
+        />
+      )}
 
       {/* File Viewer Modal */}
       <FileViewerModal file={selectedFile} onClose={() => setSelectedFile(null)} />

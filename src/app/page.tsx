@@ -61,7 +61,74 @@ export default function Page() {
         })));
       }
 
-      return <ToolCard {...props} />;
+      
+      // Handle GitHub CLI tool results
+      // Expect JSON output from `gh issue list` and `gh pr list`
+      if (name === "gh" && status === "complete" && result && typeof result === "object") {
+        const argsObj = args as Record<string, unknown>;
+        const command = String(argsObj.command || "");
+
+        // repo/branch hinting (best-effort)
+        const repoFromEnv = (process.env.NEXT_PUBLIC_SKILL_REPO || process.env.SKILL_REPO) as string | undefined;
+
+        // Issues
+        if (command.includes("issue") && command.includes("list")) {
+          const issues = Array.isArray((result as any).stdout)
+            ? (result as any).stdout
+            : Array.isArray(result)
+              ? result
+              : undefined;
+          if (issues) {
+            queueMicrotask(() =>
+              setState((prev) => ({
+                ...prev,
+                github: {
+                  ...prev.github,
+                  repo: prev.github.repo || repoFromEnv,
+                  issues: issues.map((i: any) => ({
+                    number: i.number,
+                    title: i.title,
+                    url: i.url,
+                    assignee: i.assignee ? { login: i.assignee.login || i.assignee } : null,
+                    labels: Array.isArray(i.labels)
+                      ? i.labels.map((l: any) => ({ name: l.name ?? String(l), color: l.color }))
+                      : [],
+                  })),
+                },
+              }))
+            );
+          }
+        }
+
+        // PRs
+        if (command.includes("pr") && command.includes("list")) {
+          const prs = Array.isArray((result as any).stdout)
+            ? (result as any).stdout
+            : Array.isArray(result)
+              ? result
+              : undefined;
+          if (prs) {
+            queueMicrotask(() =>
+              setState((prev) => ({
+                ...prev,
+                github: {
+                  ...prev.github,
+                  repo: prev.github.repo || repoFromEnv,
+                  pullRequests: prs.map((p: any) => ({
+                    number: p.number,
+                    title: p.title,
+                    url: p.url,
+                    isDraft: Boolean(p.isDraft),
+                    state: p.state,
+                    reviewDecision: p.reviewDecision ?? null,
+                  })),
+                },
+              }))
+            );
+          }
+        }
+      }
+return <ToolCard {...props} />;
     },
   });
 

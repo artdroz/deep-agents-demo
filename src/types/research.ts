@@ -26,14 +26,52 @@ export interface Source {
   status: "found" | "scraped" | "failed";
 }
 
+export interface GitHubLabel {
+  name: string;
+  color?: string;
+}
+
+export interface GitHubUser {
+  login: string;
+}
+
+export interface GitHubIssue {
+  number: number;
+  title: string;
+  url?: string;
+  assignee?: GitHubUser | null;
+  labels?: GitHubLabel[];
+}
+
+export interface GitHubPullRequest {
+  number: number;
+  title: string;
+  url?: string;
+  isDraft?: boolean;
+  state?: string;
+  reviewDecision?: string | null;
+}
+
+export interface GitHubState {
+  repo?: string;
+  branch?: string;
+  issues: GitHubIssue[];
+  pullRequests: GitHubPullRequest[];
+}
+
 export interface ResearchState {
   todos: Todo[];
   files: ResearchFile[];
   sources: Source[];
+  github: GitHubState;
 }
 
 export const INITIAL_STATE: ResearchState = {
   todos: [],
   files: [],
   sources: [],
+  github: {
+    issues: [],
+    pullRequests: [],
+  },
 };
