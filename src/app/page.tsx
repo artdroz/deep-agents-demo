@@ -6,6 +6,7 @@ import { useDefaultTool } from "@copilotkit/react-core";
 import { Workspace } from "@/components/Workspace";
 import { ResearchState, INITIAL_STATE, Todo } from "@/types/research";
 import { ToolCard } from "@/components/ToolCard";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 export default function Page() {
   const [state, setState] = useState<ResearchState>(INITIAL_STATE);
@@ -66,59 +67,40 @@ export default function Page() {
   });
 
   return (
-    <div className="relative min-h-screen">
-        {/* Animated background */}
-        <div className="abstract-bg">
-          <div className="blob-3" />
-        </div>
-
-        {/* Main content */}
-        <main className="relative z-10 h-screen flex overflow-hidden">
-          {/* Chat panel - left side (38%) */}
-          <div className="w-[38%] h-full border-r border-[var(--color-border-glass)] bg-[var(--color-glass-dark)] backdrop-blur-xl overflow-hidden">
-            <div className="h-full flex flex-col">
-              {/* Header */}
-              <header style={{ padding: 'var(--space-8)' }} className="border-b border-[var(--color-border-glass)]">
-                <h1
-                  style={{
-                    fontSize: 'var(--text-3xl)',
-                    fontWeight: 'var(--font-extrabold)',
-                    fontFamily: 'var(--font-display)',
-                    fontOpticalSizing: 'auto'
-                  }}
-                  className="text-gradient"
-                >
-                  Deep Research Assistant
-                </h1>
-                <p
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--color-text-secondary)',
-                    marginTop: 'var(--space-1)'
-                  }}
-                >
-                  Ask me to research any topic
-                </p>
+    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-text-primary)]">
+      <main className="h-screen overflow-hidden">
+        <PanelGroup direction="horizontal" className="h-full">
+          <Panel defaultSize={38} minSize={25} className="min-w-[280px]">
+            <div className="h-full flex flex-col border-r border-[var(--color-border)] bg-[var(--color-panel)] overflow-hidden">
+              <header className="ide-header">
+                <div className="flex items-center justify-between">
+                  <h1 className="ide-title">Deep Agents IDE</h1>
+                </div>
+                <p className="ide-subtitle">Chat + tools, VS Code-inspired layout</p>
               </header>
 
-              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: 'var(--space-6)' }}>
+              <div className="flex-1 min-h-0 overflow-hidden p-4">
                 <CopilotChat
                   className="h-full"
                   labels={{
-                    title: "Deep Research Assistant",
-                    initial: "What topic would you like me to research?",
-                    placeholder: "Ask me to research any topic...",
+                    title: "Deep Agents IDE",
+                    initial: "What would you like to work on?",
+                    placeholder: "Ask me to implement, refactor, or investigate...",
                   }}
                 />
               </div>
             </div>
-          </div>
+          </Panel>
 
-          {/* Workspace panel - right side (62%) */}
-          <div className="w-[62%] h-full overflow-hidden">
-            <Workspace state={state} />
-          </div>
-        </main>
+          <PanelResizeHandle className="ide-resize-handle" />
+
+          <Panel defaultSize={62} minSize={35}>
+            <div className="h-full overflow-hidden">
+              <Workspace state={state} />
+            </div>
+          </Panel>
+        </PanelGroup>
+      </main>
     </div>
   );
 }

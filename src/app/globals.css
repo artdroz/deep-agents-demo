@@ -12,21 +12,22 @@
 
 :root {
   /* Background & Surfaces */
-  --color-background: #FAFAF9;
-  --color-surface: #F5F5F4;
-  --color-surface-light: #FAFAF9;
-  --color-surface-elevated: #FFFFFF;
-  --color-container: #FFFFFF;
+  --color-background: #1e1e2e;
+  --color-surface: #181825;
+  --color-surface-light: #1e1e2e;
+  --color-surface-elevated: #24273a;
+  --color-container: #24273a;
+  --color-panel: #11111b;
 
   /* Text Hierarchy */
-  --color-text-primary: #1C1917;
-  --color-text-secondary: #57534E;
-  --color-text-tertiary: #A8A29E;
+  --color-text-primary: #cdd6f4;
+  --color-text-secondary: #a6adc8;
+  --color-text-tertiary: #6c7086;
 
   /* Accent Color (Deep Amber) */
-  --color-accent: #D97706;
-  --color-accent-light: #F59E0B;
-  --color-accent-dark: #92400E;
+  --color-accent: #89b4fa;
+  --color-accent-light: #b4befe;
+  --color-accent-dark: #74c7ec;
 
   /* Legacy color names for compatibility */
   --color-lilac: var(--color-accent);
@@ -37,14 +38,14 @@
   --color-mint-dark: var(--color-success);
 
   /* Status Colors */
-  --color-success: #15803D;
-  --color-error: #B91C1C;
-  --color-warning: #D97706;
+  --color-success: #a6e3a1;
+  --color-error: #f38ba8;
+  --color-warning: #f9e2af;
 
   /* Borders */
-  --color-border: #E7E5E4;
-  --color-border-light: #F5F5F4;
-  --color-border-subtle: #F5F5F4;
+  --color-border: #313244;
+  --color-border-light: #313244;
+  --color-border-subtle: #2b2d42;
   --color-border-glass: rgba(231, 229, 228, 0.4);
 
   /* Glassmorphism */
@@ -109,7 +110,7 @@
   --font-bold: 700;
   --font-extrabold: 800;
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -124,159 +125,35 @@
 
 body {
   font-family: var(--font-family);
-  background: var(--color-surface-light);
+  background: var(--color-background);
   color: var(--color-text-primary);
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* =============================================================================
-   ABSTRACT SHAPES BACKGROUND
-============================================================================= */
 
-.abstract-bg {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  z-index: 0;
-  background: linear-gradient(135deg, var(--color-surface-light) 0%, var(--color-surface) 100%);
-}
 
-.abstract-bg::before,
-.abstract-bg::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.6;
-}
-
-.abstract-bg::before {
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(
-    circle,
-    rgba(217, 119, 6, 0.15),
-    rgba(217, 119, 6, 0.08),
-    transparent 70%
-  );
-  top: -200px;
-  right: -100px;
-  animation: blob1 25s ease-in-out infinite;
-}
-
-.abstract-bg::after {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(
-    circle,
-    rgba(168, 162, 158, 0.12),
-    rgba(168, 162, 158, 0.06),
-    transparent 70%
-  );
-  bottom: -150px;
-  left: -100px;
-  animation: blob2 30s ease-in-out infinite;
-}
-
-.blob-3 {
-  position: absolute;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(
-    circle,
-    rgba(217, 119, 6, 0.1),
-    rgba(231, 229, 228, 0.08),
-    transparent 70%
-  );
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.4;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: blob3 35s ease-in-out infinite;
-}
-
-@keyframes blob1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(-30px, 50px) scale(1.1); }
-  50% { transform: translate(20px, -30px) scale(0.95); }
-  75% { transform: translate(40px, 20px) scale(1.05); }
-}
-
-@keyframes blob2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(50px, -40px) scale(1.1); }
-  66% { transform: translate(-30px, 30px) scale(0.9); }
-}
-
-@keyframes blob3 {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  25% { transform: translate(-45%, -55%) scale(1.15); }
-  50% { transform: translate(-55%, -45%) scale(0.9); }
-  75% { transform: translate(-48%, -52%) scale(1.1); }
-}
-
-/* =============================================================================
-   GLASSMORPHISM COMPONENTS
-============================================================================= */
-
-.glass {
-  background: var(--color-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border-glass);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-glass);
-}
-
-.glass-subtle {
-  background: var(--color-glass-subtle);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--color-border-glass);
-  border-radius: var(--radius-lg);
-}
-
-.glass-card {
-  background: var(--color-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border-glass);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-glass);
-  padding: var(--space-6);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.glass-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
-}
 
 /* =============================================================================
    WORKSPACE PANEL (Deep Research specific)
 ============================================================================= */
 
 .workspace-panel {
-  background: var(--color-glass-dark);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--color-panel);
   height: 100%;
-  overflow-y: auto;
+  overflow: auto;
 }
 
+
 .workspace-section {
-  background: var(--color-glass);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--color-border-glass);
-  border-radius: var(--radius-lg);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   margin-bottom: var(--space-4);
   overflow: hidden;
 }
+
 
 .workspace-section-header {
   display: flex;
@@ -288,7 +165,7 @@ body {
 }
 
 .workspace-section-header:hover {
-  background: var(--color-glass-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .workspace-section-content {
@@ -307,7 +184,7 @@ body {
 }
 
 .todo-item:hover {
-  background: var(--color-glass-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .todo-item-completed {
@@ -354,14 +231,14 @@ body {
 }
 
 .file-item:hover {
-  background: var(--color-glass-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .file-item-icon {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+  background: rgba(137, 180, 250, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -374,7 +251,8 @@ body {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: linear-gradient(135deg, var(--color-accent-light), rgba(231, 229, 228, 0.5));
+  background: rgba(137, 180, 250, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 
@@ -391,11 +269,11 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
+  background: rgba(137, 180, 250, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-primary);
 }
 
 /* =============================================================================
@@ -403,12 +281,10 @@ body {
 ============================================================================= */
 
 [data-copilotkit-sidebar] {
-  --copilot-kit-background-color: rgba(250, 250, 249, 0.95) !important;
-  --copilot-kit-secondary-color: rgba(255, 255, 255, 0.7) !important;
+  --copilot-kit-background-color: var(--color-panel) !important;
+  --copilot-kit-secondary-color: var(--color-surface-elevated) !important;
   --copilot-kit-primary-color: var(--color-accent) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-left: 1px solid var(--color-border-glass) !important;
+  border-left: 1px solid var(--color-border) !important;
 }
 
 [data-copilotkit-sidebar] .copilotkit-message {
@@ -426,10 +302,7 @@ body {
 ============================================================================= */
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text-primary);
 }
 
 .border-gradient {
@@ -525,4 +398,73 @@ body {
 
 .hover-scale:hover {
   transform: scale(1.02);
+}
+
+/* =============================================================================
+   IDE LAYOUT HELPERS
+============================================================================= */
+
+.ide-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+
+.ide-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.ide-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.ide-resize-handle {
+  width: 6px;
+  background: var(--color-background);
+  position: relative;
+}
+
+.ide-resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-border);
+  opacity: 0.55;
+}
+
+.ide-resize-handle:hover::after {
+  opacity: 1;
+}
+
+/* Dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #45475a transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #585b70;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

@@ -87,7 +87,7 @@ function TodoList({ todos }: { todos: Todo[] }) {
           }}
         />
         <p style={{ fontSize: 'var(--text-sm)' }}>No tasks yet</p>
-        <p className="text-xs mt-1">Research tasks will appear here</p>
+        <p className="text-xs mt-1">Tasks will appear here</p>
       </div>
     );
   }
@@ -149,7 +149,7 @@ function FileList({
           }}
         />
         <p style={{ fontSize: 'var(--text-sm)' }}>No files yet</p>
-        <p className="text-xs mt-1">Research artifacts will appear here</p>
+        <p className="text-xs mt-1">Files will appear here</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ function FileList({
               e.stopPropagation(); // Don't trigger file view on download click
               downloadFile(file);
             }}
-            className="p-2 rounded-lg hover:bg-[var(--color-glass-subtle)] transition-colors"
+            className="p-2 rounded-lg hover:bg-[rgba(255,255,255,0.04)] transition-colors"
             aria-label="Download file"
             title="Download file"
           >
@@ -277,11 +277,11 @@ export function Workspace({ state }: WorkspaceProps) {
       <div className="mb-6">
         <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Workspace</h2>
         <p className="text-sm text-[var(--color-text-secondary)]">
-          Research progress and artifacts
+          Workspace state
         </p>
       </div>
 
-      <Section title="Research Plan" icon={ListTodo} badge={todoCount}>
+      <Section title="Todos" icon={ListTodo} badge={todoCount}>
         <TodoList todos={todos} />
       </Section>
 
