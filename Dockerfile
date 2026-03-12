@@ -1,21 +1,29 @@
-FROM node:20-slim
+# Multi-stage build:
+# 1) Build the Next.js frontend
+# 2) Build a lightweight runtime that can also run the Python agent tooling
+
+FROM node:20-slim AS frontend-build
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
-
-# Copy source files
 COPY . .
-
-# Build Next.js app
 RUN npm run build
 
-# Expose port
+
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# Install deepagents-cli (used by the coding agent image)
+RUN pip install --no-cache-dir 'deepagents-cli[openai]'
+
+# Copy built Next.js app and runtime files
+COPY --from=frontend-build /app /app
+
 EXPOSE 3000
 
-# Start server
+# Default remains the Next.js server; the agent can be run in a separate service/container.
 CMD ["npm", "start"]

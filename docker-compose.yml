@@ -1,0 +1,33 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Frontend can pass these through if needed
+      AGENT_MODE: ${AGENT_MODE:-research}
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # NOTE: update this command to your actual agent entrypoint if different.
+    command: ["python", "-m", "agent.agent"]
+    environment:
+      AGENT_MODE: ${AGENT_MODE:-research}
+      PROVIDER: ${PROVIDER:-openai}
+
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+      # Azure OpenAI
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-10-21}
+
+      # GitHub tooling
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SKILL_REPO: ${SKILL_REPO:-}
