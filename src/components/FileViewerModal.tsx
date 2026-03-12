@@ -3,7 +3,7 @@
 import { useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { X, Download, FileText } from "lucide-react";
-import type { ResearchFile } from "@/types/research";
+import type { FileNode } from "@/types/workspace";
 
 /**
  * FileViewerModal - Modal for viewing file content with markdown rendering.
@@ -16,7 +16,7 @@ import type { ResearchFile } from "@/types/research";
  */
 
 interface FileViewerModalProps {
-  file: ResearchFile | null;
+  file: FileNode | null;
   onClose: () => void;
 }
 

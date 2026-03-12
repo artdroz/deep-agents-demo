@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, ListTodo, FileText, Download, Globe, Check, Circle, CircleDot, X } from "lucide-react";
-import { ResearchState, Todo, ResearchFile, Source } from "@/types/research";
+import type { WorkspaceState, Todo, FileNode, Source } from "@/types/workspace";
 import { FileViewerModal } from "@/components/FileViewerModal";
 
 // Helper function to download file content
-function downloadFile(file: ResearchFile) {
+function downloadFile(file: FileNode & { content: string }) {
   const blob = new Blob([file.content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -19,7 +19,7 @@ function downloadFile(file: ResearchFile) {
 }
 
 interface WorkspaceProps {
-  state: ResearchState;
+  state: WorkspaceState;
 }
 
 // Collapsible section component with smooth transitions
@@ -87,7 +87,7 @@ function TodoList({ todos }: { todos: Todo[] }) {
           }}
         />
         <p style={{ fontSize: 'var(--text-sm)' }}>No tasks yet</p>
-        <p className="text-xs mt-1">Research tasks will appear here</p>
+        <p className="text-xs mt-1">Tasks will appear here</p>
       </div>
     );
   }
@@ -134,8 +134,8 @@ function FileList({
   files,
   onFileClick,
 }: {
-  files: ResearchFile[];
-  onFileClick: (file: ResearchFile) => void;
+  files: FileNode[];
+  onFileClick: (file: FileNode) => void;
 }) {
   if (files.length === 0) {
     return (
@@ -270,7 +270,7 @@ export function Workspace({ state }: WorkspaceProps) {
   const sourceCount = sources.length;
 
   // State for file viewer modal
-  const [selectedFile, setSelectedFile] = useState<ResearchFile | null>(null);
+  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
 
   return (
     <div className="workspace-panel p-6">
