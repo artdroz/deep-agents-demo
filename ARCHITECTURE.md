@@ -7,26 +7,27 @@ An architecture overview of the Sympozium-powered coding agent that autonomously
 ## System Architecture
 
 ```mermaid
+%%{init: {'theme': 'neutral'}}%%
 graph TB
-    subgraph K8s["Kubernetes Cluster"]
+    subgraph K8s [Kubernetes Cluster]
         direction TB
 
-        subgraph Control["Control Plane"]
-            Sched["Schedule Controller"]
-            Recon["AgentRun Reconciler"]
-            ChanR["Channel Router"]
-            MemMgr["Memory Manager"]
+        subgraph Control [Control Plane]
+            Sched[Schedule Controller]
+            Recon[AgentRun Reconciler]
+            ChanR[Channel Router]
+            MemMgr[Memory Manager]
             Sched -->|creates AgentRun| Recon
         end
 
-        NATS["NATS JetStream"]
+        NATS[NATS JetStream]
         Recon -->|lifecycle events| NATS
         ChanR <-->|message routing| NATS
 
-        subgraph Agent["Agent Pod · ephemeral"]
+        subgraph Agent [Agent Pod · ephemeral]
             direction LR
-            Runner["Agent Runner"]
-            Sidecar["Skill Sidecar"]
+            Runner[Agent Runner]
+            Sidecar[Skill Sidecar]
             IPC["/ipc + /memory"]
             Runner <-->|execute_command| Sidecar
             Runner -->|read/write| IPC
@@ -35,35 +36,31 @@ graph TB
         Recon -->|spawns pod| Agent
         IPC -->|fsnotify| NATS
 
-        subgraph Chan["Channel Pods"]
-            Webex["Webex Channel"]
+        subgraph Chan [Channel Pods]
+            Webex[Webex Channel]
         end
 
         NATS <-->|outbound messages| Chan
         MemMgr -->|patches ConfigMap| IPC
     end
 
-    GH["GitHub"]
-    WX["Webex Space"]
+    GH[GitHub]
+    WX[Webex Space]
 
     Sidecar <-->|gh cli| GH
     Webex <-->|Bot API| WX
 
-    style K8s fill:#161b22,stroke:#30363d,color:#c9d1d9
-    style Control fill:#1f6feb,stroke:#388bfd,color:#fff
-    style Agent fill:#8957e5,stroke:#a371f7,color:#fff
-    style Chan fill:#1f6feb,stroke:#388bfd,color:#fff
-    style NATS fill:#da3633,stroke:#f85149,color:#fff
-    style GH fill:#30363d,stroke:#484f58,color:#c9d1d9
-    style WX fill:#1a7f37,stroke:#3fb950,color:#fff
-    style Sched fill:#1f6feb,stroke:#388bfd,color:#fff
-    style Recon fill:#1f6feb,stroke:#388bfd,color:#fff
-    style ChanR fill:#1f6feb,stroke:#388bfd,color:#fff
-    style MemMgr fill:#1f6feb,stroke:#388bfd,color:#fff
-    style Runner fill:#8957e5,stroke:#a371f7,color:#fff
-    style Sidecar fill:#8957e5,stroke:#a371f7,color:#fff
-    style IPC fill:#8957e5,stroke:#a371f7,color:#fff
-    style Webex fill:#1f6feb,stroke:#388bfd,color:#fff
+    style NATS fill:#e74c3c,stroke:#c0392b,color:#fff
+    style GH fill:#24292e,stroke:#444,color:#fff
+    style WX fill:#049fd9,stroke:#037bb5,color:#fff
+    style Sched fill:#2980b9,stroke:#1a6da0,color:#fff
+    style Recon fill:#2980b9,stroke:#1a6da0,color:#fff
+    style ChanR fill:#2980b9,stroke:#1a6da0,color:#fff
+    style MemMgr fill:#2980b9,stroke:#1a6da0,color:#fff
+    style Runner fill:#8e44ad,stroke:#71368a,color:#fff
+    style Sidecar fill:#8e44ad,stroke:#71368a,color:#fff
+    style IPC fill:#9b59b6,stroke:#7d3c98,color:#fff
+    style Webex fill:#2980b9,stroke:#1a6da0,color:#fff
 ```
 
 ---
