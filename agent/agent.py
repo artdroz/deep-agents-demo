@@ -3,12 +3,15 @@ Deep Research Assistant Agent
 
 A Deep Agents-powered research assistant that demonstrates CopilotKit's
 planning, filesystem, and subagent capabilities using Tavily for web research.
+
+This agent also supports Azure OpenAI via environment variables.
 """
 
 import os
+
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from copilotkit import CopilotKitMiddleware
 
@@ -47,6 +50,50 @@ Example workflow:
 Always maintain a professional, comprehensive research style."""
 
 
+def _build_llm():
+    provider = os.environ.get("PROVIDER", "openai").strip().lower()
+    model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
+
+    if provider == "azure":
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+        endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+        deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT")
+        api_version = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-10-21")
+
+        missing = [
+            name
+            for name, value in {
+                "AZURE_OPENAI_API_KEY": api_key,
+                "AZURE_OPENAI_ENDPOINT": endpoint,
+                "AZURE_OPENAI_DEPLOYMENT": deployment,
+            }.items()
+            if not value
+        ]
+        if missing:
+            raise RuntimeError(
+                "Missing Azure OpenAI environment variables: " + ", ".join(missing)
+            )
+
+        return AzureChatOpenAI(
+            azure_endpoint=endpoint,
+            azure_deployment=deployment,
+            api_key=api_key,
+            api_version=api_version,
+            temperature=0.7,
+        )
+
+    # Default: OpenAI
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing OPENAI_API_KEY environment variable")
+
+    return ChatOpenAI(
+        model=model_name,
+        temperature=0.7,
+        api_key=api_key,
+    )
+
+
 def build_agent():
     """Build the Deep Research Agent with CopilotKit integration.
 
@@ -56,22 +103,12 @@ def build_agent():
     Returns:
         Compiled LangGraph StateGraph configured for research tasks
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("Missing OPENAI_API_KEY environment variable")
-
     # Check for Tavily API key
     tavily_key = os.environ.get("TAVILY_API_KEY")
     if not tavily_key:
         raise RuntimeError("Missing TAVILY_API_KEY environment variable")
 
-    # Initialize LLM - use model from env or default to gpt-5.2
-    model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
-    llm = ChatOpenAI(
-        model=model_name,
-        temperature=0.7,
-        api_key=api_key,
-    )
+    llm = _build_llm()
 
     # Main agent gets research tool plus built-in Deep Agents tools
     # (write_todos, read_file, write_file)
@@ -89,7 +126,7 @@ def build_agent():
         checkpointer=MemorySaver(),
     )
 
-    print(f"[AGENT] Deep Research Agent created with model={model_name}")
+    print(f"[AGENT] Deep Research Agent created with provider={os.environ.get('PROVIDER','openai')}")
     print(f"[AGENT] Main tools: {[t.name for t in main_tools]}")
 
     # Configure recursion limit for complex research tasks
