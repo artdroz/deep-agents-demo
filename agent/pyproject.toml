@@ -18,3 +18,8 @@ dependencies = [
 [tool.setuptools]
 py-modules = ["agent", "main", "tools"]
 
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+]

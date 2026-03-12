@@ -6,11 +6,12 @@ planning, filesystem, and subagent capabilities using Tavily for web research.
 """
 
 import os
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from deepagents import create_deep_agent
-from langgraph.checkpoint.memory import MemorySaver
+
 from copilotkit import CopilotKitMiddleware
+from deepagents import create_deep_agent
+from dotenv import load_dotenv
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
 
 from tools import research
 
@@ -56,22 +57,59 @@ def build_agent():
     Returns:
         Compiled LangGraph StateGraph configured for research tasks
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("Missing OPENAI_API_KEY environment variable")
+
+    provider = os.environ.get("PROVIDER", "openai").lower().strip()
+    if provider not in {"openai", "azure"}:
+        raise RuntimeError(f"Invalid PROVIDER='{provider}'. Expected 'openai' or 'azure'.")
+
+    if provider == "azure":
+        azure_api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+        azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+        azure_deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT")
+        azure_api_version = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-10-21")
+
+        missing = [
+            name
+            for name, val in {
+                "AZURE_OPENAI_API_KEY": azure_api_key,
+                "AZURE_OPENAI_ENDPOINT": azure_endpoint,
+                "AZURE_OPENAI_DEPLOYMENT": azure_deployment,
+            }.items()
+            if not val
+        ]
+        if missing:
+            raise RuntimeError(
+                "Missing required Azure OpenAI environment variables: " + ", ".join(missing)
+            )
+    else:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("Missing OPENAI_API_KEY environment variable")
 
     # Check for Tavily API key
     tavily_key = os.environ.get("TAVILY_API_KEY")
     if not tavily_key:
         raise RuntimeError("Missing TAVILY_API_KEY environment variable")
 
-    # Initialize LLM - use model from env or default to gpt-5.2
-    model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
-    llm = ChatOpenAI(
-        model=model_name,
-        temperature=0.7,
-        api_key=api_key,
-    )
+    # Initialize LLM
+    # - OpenAI: OPENAI_MODEL (default: gpt-5.2)
+    # - Azure: AZURE_OPENAI_DEPLOYMENT is the model/deployment identifier
+    if provider == "azure":
+        model_name = azure_deployment
+        llm = AzureChatOpenAI(
+            azure_deployment=azure_deployment,
+            azure_endpoint=azure_endpoint,
+            api_version=azure_api_version,
+            api_key=azure_api_key,
+            temperature=0.7,
+        )
+    else:
+        model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
+        llm = ChatOpenAI(
+            model=model_name,
+            temperature=0.7,
+            api_key=api_key,
+        )
 
     # Main agent gets research tool plus built-in Deep Agents tools
     # (write_todos, read_file, write_file)
@@ -89,7 +127,7 @@ def build_agent():
         checkpointer=MemorySaver(),
     )
 
-    print(f"[AGENT] Deep Research Agent created with model={model_name}")
+    print(f"[AGENT] Deep Research Agent created with provider={provider} model={model_name}")
     print(f"[AGENT] Main tools: {[t.name for t in main_tools]}")
 
     # Configure recursion limit for complex research tasks
