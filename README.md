@@ -64,8 +64,9 @@ deep-research-v2/
 
 | Variable                   | Required | Default                 | Description                                         |
 | -------------------------- | -------- | ----------------------- | --------------------------------------------------- |
-| `OPENAI_API_KEY`           | Yes      | -                       | [Get API key](https://platform.openai.com/api-keys) |
-| `TAVILY_API_KEY`           | Yes      | -                       | [Get API key](https://app.tavily.com/home)          |
+| `OPENAI_API_KEY`           | Yes      | -                       | OpenAI API key                                      |
+| `AGENT_MODE`              | No       | `research`              | Agent mode: research or coding                      |
+| `TAVILY_API_KEY`           | Research-only | -                       | Tavily API key (required in AGENT_MODE=research)    |
 | `OPENAI_MODEL`             | No       | `gpt-5.2`               | Model to use (gpt-5.2, gpt-5, etc.)                 |
 | `LANGGRAPH_DEPLOYMENT_URL` | No       | `http://localhost:8123` | Backend URL                                         |
 | `SERVER_HOST`              | No       | `0.0.0.0`               | Backend host                                        |
