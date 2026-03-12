@@ -26,14 +26,48 @@ export interface Source {
   status: "found" | "scraped" | "failed";
 }
 
+// --- GitHub state (populated from gh CLI JSON tool call results) ---
+
+export interface GitHubIssue {
+  number: number;
+  title: string;
+  labels: string[];
+  assignee?: string | null;
+  url?: string;
+}
+
+export interface GitHubPullRequest {
+  number: number;
+  title: string;
+  state: string;
+  isDraft?: boolean;
+  reviewDecision?: string | null;
+  author?: string | null;
+  url?: string;
+}
+
+export interface GitHubState {
+  repo: string;
+  branch: string;
+  issues: GitHubIssue[];
+  pullRequests: GitHubPullRequest[];
+}
+
 export interface ResearchState {
   todos: Todo[];
   files: ResearchFile[];
   sources: Source[];
+  github: GitHubState;
 }
 
 export const INITIAL_STATE: ResearchState = {
   todos: [],
   files: [],
   sources: [],
+  github: {
+    repo: "",
+    branch: "",
+    issues: [],
+    pullRequests: [],
+  },
 };

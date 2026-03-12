@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, ListTodo, FileText, Download, Globe, Check, Circle, CircleDot, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ListTodo,
+  FileText,
+  Download,
+  Globe,
+  Check,
+  Circle,
+  CircleDot,
+  X,
+  Github,
+} from "lucide-react";
 import { ResearchState, Todo, ResearchFile, Source } from "@/types/research";
 import { FileViewerModal } from "@/components/FileViewerModal";
+import { GitHubPanel } from "@/components/GitHubPanel";
 
 // Helper function to download file content
 function downloadFile(file: ResearchFile) {
@@ -46,16 +59,18 @@ function Section({
       >
         <div className="flex items-center gap-3">
           <Icon className="w-5 h-5 text-[var(--color-text-secondary)]" />
-          <span className="font-semibold text-[var(--color-text-primary)]">{title}</span>
+          <span className="font-semibold text-[var(--color-text-primary)]">
+            {title}
+          </span>
           {badge !== undefined && badge > 0 && (
             <span
               style={{
-                background: 'var(--color-accent)',
-                color: 'var(--color-background)',
-                padding: 'var(--space-1) var(--space-2)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'var(--font-semibold)',
-                borderRadius: 'var(--radius-lg)'
+                background: "var(--color-accent)",
+                color: "var(--color-background)",
+                padding: "var(--space-1) var(--space-2)",
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--font-semibold)",
+                borderRadius: "var(--radius-lg)",
               }}
             >
               {badge}
@@ -77,16 +92,23 @@ function Section({
 function TodoList({ todos }: { todos: Todo[] }) {
   if (todos.length === 0) {
     return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
+      <div
+        className="empty-state"
+        style={{
+          paddingTop: "var(--space-8)",
+          paddingBottom: "var(--space-8)",
+          animation: "fadeIn 0.4s ease",
+        }}
+      >
         <ListTodo
           size={32}
           strokeWidth={1.5}
           style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
+            color: "var(--color-text-tertiary)",
+            marginBottom: "var(--space-3)",
           }}
         />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No tasks yet</p>
+        <p style={{ fontSize: "var(--text-sm)" }}>No tasks yet</p>
         <p className="text-xs mt-1">Research tasks will appear here</p>
       </div>
     );
@@ -101,8 +123,8 @@ function TodoList({ todos }: { todos: Todo[] }) {
             todo.status === "completed"
               ? "todo-item-completed"
               : todo.status === "in_progress"
-              ? "todo-item-inprogress"
-              : "todo-item-pending"
+                ? "todo-item-inprogress"
+                : "todo-item-pending"
           }`}
         >
           <span
@@ -110,8 +132,8 @@ function TodoList({ todos }: { todos: Todo[] }) {
               todo.status === "completed"
                 ? "status-completed"
                 : todo.status === "in_progress"
-                ? "status-inprogress"
-                : "status-pending"
+                  ? "status-inprogress"
+                  : "status-pending"
             }`}
           >
             {todo.status === "completed" ? (
@@ -139,16 +161,23 @@ function FileList({
 }) {
   if (files.length === 0) {
     return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
+      <div
+        className="empty-state"
+        style={{
+          paddingTop: "var(--space-8)",
+          paddingBottom: "var(--space-8)",
+          animation: "fadeIn 0.4s ease",
+        }}
+      >
         <FileText
           size={32}
           strokeWidth={1.5}
           style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
+            color: "var(--color-text-tertiary)",
+            marginBottom: "var(--space-3)",
           }}
         />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No files yet</p>
+        <p style={{ fontSize: "var(--text-sm)" }}>No files yet</p>
         <p className="text-xs mt-1">Research artifacts will appear here</p>
       </div>
     );
@@ -194,16 +223,23 @@ function FileList({
 function SourceList({ sources }: { sources: Source[] }) {
   if (sources.length === 0) {
     return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
+      <div
+        className="empty-state"
+        style={{
+          paddingTop: "var(--space-8)",
+          paddingBottom: "var(--space-8)",
+          animation: "fadeIn 0.4s ease",
+        }}
+      >
         <Globe
           size={32}
           strokeWidth={1.5}
           style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
+            color: "var(--color-text-tertiary)",
+            marginBottom: "var(--space-3)",
           }}
         />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No sources yet</p>
+        <p style={{ fontSize: "var(--text-sm)" }}>No sources yet</p>
         <p className="text-xs mt-1">Web sources will appear here</p>
       </div>
     );
@@ -214,7 +250,9 @@ function SourceList({ sources }: { sources: Source[] }) {
       {sources.map((source, i) => (
         <div
           key={`${source.url}-${i}`}
-          className={`file-item animate-fadeSlideIn ${source.status === "failed" ? "source-failed" : ""}`}
+          className={`file-item animate-fadeSlideIn ${
+            source.status === "failed" ? "source-failed" : ""
+          }`}
           title={source.status === "failed" ? "Failed to scrape this source" : undefined}
         >
           <div className="flex items-center gap-3">
@@ -223,28 +261,31 @@ function SourceList({ sources }: { sources: Source[] }) {
                 source.status === "scraped"
                   ? "status-completed"
                   : source.status === "failed"
-                  ? ""
-                  : "status-pending"
+                    ? ""
+                    : "status-pending"
               }`}
-              style={source.status === "failed" ? { color: 'var(--color-error)' } : undefined}
+              style={
+                source.status === "failed" ? { color: "var(--color-error)" } : undefined
+              }
             >
               {source.status === "scraped" ? (
-                <Check size={14} style={{ color: 'var(--color-success)' }} />
+                <Check size={14} style={{ color: "var(--color-success)" }} />
               ) : source.status === "failed" ? (
-                <X size={14} style={{ color: 'var(--color-error)' }} />
+                <X size={14} style={{ color: "var(--color-error)" }} />
               ) : (
                 <Circle size={14} />
               )}
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                {source.title || (() => {
-                  try {
-                    return new URL(source.url).hostname;
-                  } catch {
-                    return source.url.slice(0, 40);
-                  }
-                })()}
+                {source.title ||
+                  (() => {
+                    try {
+                      return new URL(source.url).hostname;
+                    } catch {
+                      return source.url.slice(0, 40);
+                    }
+                  })()}
               </p>
               <a
                 href={source.url}
@@ -262,12 +303,44 @@ function SourceList({ sources }: { sources: Source[] }) {
   );
 }
 
+const TABS = [
+  { id: "workspace", label: "Workspace" },
+  { id: "github", label: "GitHub" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
 // Main Workspace component
 export function Workspace({ state }: WorkspaceProps) {
-  const { todos, files, sources } = state;
+  const { todos, files, sources, github } = state;
   const fileCount = files.length;
   const todoCount = todos.length;
   const sourceCount = sources.length;
+
+  const [activeTab, setActiveTab] = useState<TabId>("workspace");
+
+  const tabContent = useMemo(() => {
+    if (activeTab === "github") {
+      return <GitHubPanel github={github} />;
+    }
+
+    return (
+      <>
+        <Section title="Research Plan" icon={ListTodo} badge={todoCount}>
+          <TodoList todos={todos} />
+        </Section>
+
+        <Section title="Files" icon={FileText} badge={fileCount}>
+          <FileList files={files} onFileClick={setSelectedFile} />
+        </Section>
+
+        <Section title="Sources" icon={Globe} badge={sourceCount}>
+          <SourceList sources={sources} />
+        </Section>
+      </>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, github, todoCount, todos, fileCount, files, sourceCount, sources]);
 
   // State for file viewer modal
   const [selectedFile, setSelectedFile] = useState<ResearchFile | null>(null);
@@ -275,23 +348,44 @@ export function Workspace({ state }: WorkspaceProps) {
   return (
     <div className="workspace-panel p-6">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Workspace</h2>
+        <h2 className="text-xl font-bold text-[var(--color-text-primary)] flex items-center justify-between">
+          <span>Workspace</span>
+          <span className="flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
+            <Github className="w-4 h-4" />
+            {github.repo ? github.repo : "GitHub"}
+          </span>
+        </h2>
         <p className="text-sm text-[var(--color-text-secondary)]">
           Research progress and artifacts
         </p>
+
+        <div className="mt-4 flex items-center gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className="px-3 py-1.5 rounded-md text-sm transition-colors"
+              style={
+                activeTab === t.id
+                  ? {
+                      background: "var(--color-glass-subtle)",
+                      border: "1px solid var(--color-border-glass)",
+                      color: "var(--color-text-primary)",
+                    }
+                  : {
+                      background: "transparent",
+                      border: "1px solid transparent",
+                      color: "var(--color-text-tertiary)",
+                    }
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <Section title="Research Plan" icon={ListTodo} badge={todoCount}>
-        <TodoList todos={todos} />
-      </Section>
-
-      <Section title="Files" icon={FileText} badge={fileCount}>
-        <FileList files={files} onFileClick={setSelectedFile} />
-      </Section>
-
-      <Section title="Sources" icon={Globe} badge={sourceCount}>
-        <SourceList sources={sources} />
-      </Section>
+      {tabContent}
 
       {/* File Viewer Modal */}
       <FileViewerModal file={selectedFile} onClose={() => setSelectedFile(null)} />
