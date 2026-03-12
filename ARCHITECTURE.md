@@ -27,7 +27,7 @@ graph TB
         subgraph Agent [Agent Pod · ephemeral]
             direction LR
             Runner[Agent Runner]
-            Sidecar[Skill Sidecar]
+            Sidecar[Skill Sidecar · gh · git]
             IPC["/ipc + /memory"]
             Runner <-->|execute_command| Sidecar
             Runner -->|read/write| IPC
@@ -74,7 +74,7 @@ graph LR
     C -->|No| Stop["Stop"]
     C -->|Yes| D["Lock issue"]
     D --> E["Clone + branch"]
-    E --> F["deepagents-cli"]
+    E --> F["Implement changes"]
     F --> G["Commit + push"]
     G --> H{"Follow-ups?"}
     H -->|Yes| I["Create issues"]
@@ -100,7 +100,7 @@ graph LR
 ```mermaid
 graph LR
     New["New Issue"] -->|agent claims| Locked["Locked"]
-    Locked -->|deepagents runs| Impl["Implementing"]
+    Locked -->|agent implements| Impl["Implementing"]
     Impl -->|push + PR| PR["PR Created"]
     PR -->|label removed| Review["In Review"]
     Review -->|merged| Done["Closed"]
@@ -194,7 +194,7 @@ Each agent pod is fully isolated — its own filesystem, network, and sidecar to
 | Orchestration | Kubernetes (CRDs + Controllers) |
 | Event Bus | NATS JetStream |
 | Agent Runtime | Go (agent-runner with LLM tool loop) |
-| Code Implementation | `deepagents-cli` (Python, headless mode) |
+| Code Implementation | LLM agent with read/write/execute tools |
 | LLM Provider | Azure OpenAI (GPT-5.2) |
 | Source Control | GitHub (`gh` CLI) |
 | Notifications | Webex (Bot SDK + REST API) |
