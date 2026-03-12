@@ -6,102 +6,134 @@ An architecture overview of the Sympozium-powered coding agent that autonomously
 
 ## System Architecture
 
+```mermaid
+graph TB
+    subgraph K8s["Kubernetes Cluster"]
+        direction TB
+
+        subgraph Control["Control Plane"]
+            Sched["Schedule Controller<br/><code>*/5 * * * *</code>"]
+            Recon["AgentRun Reconciler"]
+            ChanR["Channel Router"]
+            MemMgr["Memory Manager"]
+            Sched -->|creates AgentRun| Recon
+        end
+
+        NATS["NATS JetStream"]
+        Recon -->|lifecycle events| NATS
+        ChanR <-->|message routing| NATS
+
+        subgraph Agent["Agent Pod (ephemeral)"]
+            direction LR
+            Runner["Agent Runner<br/>LLM tool loop"]
+            Sidecar["Skill Sidecar<br/>gh · git · deepagents-cli"]
+            IPC["/ipc + /memory"]
+            Runner <-->|execute_command| Sidecar
+            Runner -->|read/write| IPC
+        end
+
+        Recon -->|spawns pod| Agent
+        IPC -->|fsnotify| NATS
+
+        subgraph Chan["Channel Pods"]
+            Webex["Webex Channel<br/>WebSocket + REST"]
+        end
+
+        NATS <-->|outbound messages| Chan
+        MemMgr -->|patches ConfigMap| IPC
+    end
+
+    GH["GitHub<br/>Issues · PRs · Labels"]
+    WX["Webex Space<br/>Notifications"]
+
+    Sidecar <-->|gh cli| GH
+    Webex <-->|Bot API| WX
+
+    style K8s fill:#1a1a2e,stroke:#16213e,color:#e0e0e0
+    style Control fill:#0f3460,stroke:#1a1a6e,color:#e0e0e0
+    style Agent fill:#533483,stroke:#5b2c8e,color:#e0e0e0
+    style Chan fill:#0f3460,stroke:#1a1a6e,color:#e0e0e0
+    style NATS fill:#e94560,stroke:#c0392b,color:#fff
+    style GH fill:#24292e,stroke:#444,color:#fff
+    style WX fill:#00bceb,stroke:#0098c7,color:#fff
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         KUBERNETES CLUSTER                              │
-│                                                                         │
-│  ┌───────────────┐    ┌──────────────────────────────────────────────┐  │
-│  │   Scheduler    │    │            Controller Manager                │  │
-│  │               │    │                                              │  │
-│  │  ┌──────────┐ │    │  ┌─────────────┐  ┌───────────────────────┐ │  │
-│  │  │ Cron     │─┼────┼─▶│ AgentRun    │  │  PersonaPack          │ │  │
-│  │  │ */5 * * *│ │    │  │ Reconciler  │  │  Reconciler           │ │  │
-│  │  └──────────┘ │    │  └──────┬──────┘  └───────────────────────┘ │  │
-│  └───────────────┘    │         │                                    │  │
-│                       │         ▼                                    │  │
-│                       │  ┌──────────────┐   ┌──────────────────┐    │  │
-│                       │  │ Channel      │   │  Memory          │    │  │
-│                       │  │ Router       │   │  Manager         │    │  │
-│                       │  └──────┬───────┘   └────────┬─────────┘    │  │
-│                       └─────────┼────────────────────┼──────────────┘  │
-│                                 │                    │                  │
-│         ┌───────────────────────┼────────────────────┼───────┐         │
-│         │              NATS JetStream                │       │         │
-│         │          (Event Bus / Message Broker)       │       │         │
-│         └───────────┬───────────┬────────────────────┘       │         │
-│                     │           │                            │         │
-│    ┌────────────────▼──┐  ┌─────▼──────────────────────┐     │         │
-│    │   Webex Channel   │  │     Agent Pod (ephemeral)   │     │         │
-│    │                   │  │                             │     │         │
-│    │  ┌─────────────┐  │  │  ┌────────────┐ ┌────────┐ │     │         │
-│    │  │ Bot WS      │  │  │  │ Agent      │ │Sidecar │ │     │         │
-│    │  │ Listener    │  │  │  │ Runner     │ │        │ │     │         │
-│    │  └─────────────┘  │  │  │            │ │ gh cli │ │     │         │
-│    │  ┌─────────────┐  │  │  │ LLM Loop   │ │ git   │ │     │         │
-│    │  │ REST API    │  │  │  │ + Tools    │◀▶│ deep  │ │     │         │
-│    │  │ Sender      │  │  │  │            │ │ agents│ │     │         │
-│    │  └─────────────┘  │  │  └─────┬──────┘ └────────┘ │     │         │
-│    └───────────────────┘  │        │     IPC Bridge     │     │         │
-│             ▲             │  ┌─────▼──────────────────┐ │     │         │
-│             │             │  │ /ipc/messages/         │ │     │         │
-│             │             │  │ /ipc/tools/            │ │     │         │
-│             │             │  │ /memory/MEMORY.md      │◀┘     │         │
-│             │             │  └────────────────────────┘       │         │
-│             │             └──────────────────────────────────┘         │
-│             │                                                          │
-└─────────────┼──────────────────────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────┐          ┌──────────────────────────┐
-│      Webex Space        │          │      GitHub              │
-│                         │          │                          │
-│  PR notifications       │          │  Issues ──▶ Agent picks  │
-│  Status updates         │          │  PRs    ◀── Agent creates│
-│                         │          │  Labels   (in-progress)  │
-└─────────────────────────┘          └──────────────────────────┘
+
+---
+
+## Coding Agent Flow
+
+```mermaid
+graph LR
+    A["⏰ Schedule<br/>triggers run"] --> B["📋 List issues<br/><code>gh issue list</code>"]
+    B --> C{"Eligible<br/>issue?"}
+    C -->|No| Stop["🛑 Stop"]
+    C -->|Yes| D["🔒 Lock issue<br/>label + assign"]
+    D --> E["📂 Clone repo<br/>create branch"]
+    E --> F["🤖 deepagents-cli<br/>implement changes"]
+    F --> G["📝 Commit + push"]
+    G --> H{"Out-of-scope<br/>work found?"}
+    H -->|Yes| I["📌 Create<br/>follow-up issues"]
+    H -->|No| J["🔀 Create PR"]
+    I --> J
+    J --> K["🔓 Remove<br/>in-progress label"]
+    K --> L["💬 Webex<br/>notification"]
+    L --> M["💾 Save to<br/>memory"]
+
+    style A fill:#e94560,color:#fff
+    style F fill:#533483,color:#fff
+    style J fill:#0f3460,color:#fff
+    style L fill:#00bceb,color:#fff
+    style Stop fill:#555,color:#fff
+```
+
+---
+
+## Task Management Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Backlog: Issue created<br/>label: coding-agent
+
+    Backlog --> Locked: Agent claims<br/>+in-progress label<br/>+assignee
+
+    Locked --> Implementing: deepagents-cli<br/>runs headless
+
+    Implementing --> PRCreated: git push +<br/>gh pr create
+
+    PRCreated --> Review: in-progress<br/>label removed
+
+    Review --> [*]: PR merged<br/>issue closed
+
+    Implementing --> Backlog: Too complex<br/>label removed
+
+    note right of Locked
+        Three-layer dedup:
+        1. in-progress label (primary)
+        2. Assignee check (secondary)
+        3. Agent memory (tertiary)
+    end note
 ```
 
 ---
 
 ## Core Concepts
 
-### Task Management
-
-The platform uses **GitHub Issues as the task backlog**. Each issue labelled `coding-agent` is eligible for autonomous implementation. The agent follows a strict lifecycle:
-
-```
-  Open Issue          In-Progress            PR Created           Merged
-  (unassigned)  ───▶  (label + assignee) ───▶ (label removed) ───▶ (closed)
-       │                    │                      │
-       │              Agent locks it          Agent pushes
-       │              via gh CLI              branch + PR
-       ▼                    ▼                      ▼
-  ┌──────────┐      ┌──────────────┐       ┌────────────┐
-  │ Backlog  │      │  Locked by   │       │  Review    │
-  │          │      │  in-progress │       │  Ready     │
-  └──────────┘      └──────────────┘       └────────────┘
-```
-
-Deduplication is enforced through three layers:
-1. **`in-progress` label** — primary lock, prevents concurrent runs from claiming the same issue
-2. **Assignee check** — secondary signal, agent assigns itself via `gh issue edit --add-assignee @me`
-3. **Persistent memory** — tertiary signal, completed issue numbers stored across runs
-
 ### Memory
 
-Each agent instance has a **persistent ConfigMap** (`<name>-memory`) mounted at `/memory/MEMORY.md`. The agent writes structured markers during execution that the controller extracts and persists:
+Each agent instance has a **persistent ConfigMap** mounted at `/memory/MEMORY.md`. The controller extracts structured markers from agent output and patches the ConfigMap between runs.
 
-```
-Agent output ──▶ __SYMPOZIUM_MEMORY__ markers ──▶ Controller patches ConfigMap
-                                                         │
-Next run reads /memory/MEMORY.md ◀───────────────────────┘
+```mermaid
+graph LR
+    A["Agent Run N"] -->|writes markers| B["Controller"]
+    B -->|patches| C["ConfigMap<br/><code>coding-agent-memory</code>"]
+    C -->|mounted into| D["Agent Run N+1"]
+
+    style C fill:#0f3460,color:#fff
 ```
 
 Memory tracks completed issues, PR URLs, and lessons learned — preventing duplicate work across runs.
 
 ### Schedule
-
-Schedules are defined as **SympoziumSchedule CRDs** with cron expressions. The controller creates an AgentRun at each interval:
 
 | Property | Value |
 |----------|-------|
@@ -112,23 +144,27 @@ Schedules are defined as **SympoziumSchedule CRDs** with cron expressions. The c
 
 ### Connectors
 
-**Channels** are independent pods that bridge Sympozium to external messaging platforms:
-
 | Connector | Transport | Purpose |
 |-----------|-----------|---------|
 | **Webex** | WebSocket + REST API | PR notifications, status updates |
 | **GitHub** | `gh` CLI in sidecar | Issue listing, assignment, PR creation |
 | **Slack** | Socket Mode | Message routing (available) |
 
-The agent communicates with channels through a filesystem-based IPC bridge:
+Communication flows through a filesystem-based IPC bridge:
 
-```
-Agent ──▶ /ipc/messages/*.json ──▶ fsnotify ──▶ NATS ──▶ Channel Pod ──▶ Webex API
+```mermaid
+graph LR
+    A["Agent writes<br/>/ipc/messages/*.json"] -->|fsnotify| B["IPC Bridge"]
+    B -->|publish| C["NATS"]
+    C -->|subscribe| D["Channel Pod"]
+    D -->|REST API| E["Webex / Slack"]
+
+    style C fill:#e94560,color:#fff
 ```
 
 ### Supervisor
 
-The **Controller Manager** acts as the supervisor:
+The **Controller Manager** acts as the platform supervisor:
 
 - Watches CRDs (AgentRun, SympoziumInstance, SympoziumSchedule, PersonaPack, SkillPack)
 - Spawns ephemeral agent pods as Kubernetes Jobs
@@ -137,26 +173,6 @@ The **Controller Manager** acts as the supervisor:
 - Enforces policies via admission webhooks
 
 Each agent pod is fully isolated — its own filesystem, network, and sidecar tools — and is destroyed after completion.
-
----
-
-## Coding Agent Flow
-
-```
-  ┌─────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌─────────┐
-  │ Schedule │────▶│  List    │────▶│  Lock    │────▶│  Clone   │────▶│  deep   │
-  │ triggers │     │  issues  │     │  issue   │     │  repo    │     │  agents │
-  │ run      │     │  (gh)   │     │  (label  │     │  branch  │     │  CLI    │
-  └─────────┘     └──────────┘     │  assign) │     └──────────┘     │  impl   │
-                                   └──────────┘                      └────┬────┘
-                                                                          │
-  ┌─────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐         │
-  │ Webex   │◀────│  Notify  │◀────│  Create  │◀────│  Commit  │◀────────┘
-  │ space   │     │  channel │     │  PR      │     │  + push  │
-  └─────────┘     └──────────┘     └──────────┘     └──────────┘
-```
-
-The `deepagents-cli` handles the heavy lifting — reading files, understanding context, writing code — while the Sympozium agent orchestrates the workflow (issue selection, git operations, PR creation, notifications).
 
 ---
 
@@ -178,19 +194,33 @@ The `deepagents-cli` handles the heavy lifting — reading files, understanding 
 ## Future Improvements
 
 ### Multi-Agent Coordination
-Currently each agent run is independent. Future work could enable agents to coordinate — one agent plans the architecture while another implements, with a third reviewing the PR. A shared coordination layer via NATS topics would allow agents to claim subtasks, share context, and avoid conflicts.
+
+```mermaid
+graph TB
+    Planner["Planner Agent"] -->|architecture spec| Impl1["Implementer A"]
+    Planner -->|architecture spec| Impl2["Implementer B"]
+    Impl1 -->|PR| Reviewer["Review Agent"]
+    Impl2 -->|PR| Reviewer
+    Reviewer -->|approve / request changes| Impl1
+    Reviewer -->|approve / request changes| Impl2
+
+    style Planner fill:#533483,color:#fff
+    style Reviewer fill:#0f3460,color:#fff
+```
+
+Currently each agent run is independent. Future work could enable agents to coordinate — one agent plans the architecture while another implements, with a third reviewing the PR.
 
 ### Spec-Driven Development
-Instead of free-form issue descriptions, issues could contain structured specs (API contracts, test cases, acceptance criteria in a machine-readable format). The agent would validate its implementation against the spec before submitting, achieving higher first-pass success rates.
+Instead of free-form issue descriptions, issues could contain structured specs (API contracts, test cases, acceptance criteria). The agent would validate its implementation against the spec before submitting, achieving higher first-pass success rates.
 
 ### Hierarchical Task Decomposition
-A supervisor agent could break large issues into smaller, well-scoped sub-issues automatically — each implementable in a single run. This would handle complex features that currently exceed a single agent's context window or iteration budget.
+A supervisor agent could break large issues into smaller, well-scoped sub-issues automatically — each implementable in a single run.
 
 ### Review Agent
-A dedicated review persona could watch for new PRs, run tests, check for regressions, and either approve or request changes — closing the loop without human intervention for straightforward changes.
+A dedicated review persona could watch for new PRs, run tests, check for regressions, and either approve or request changes — closing the loop without human intervention.
 
 ### Learning from Feedback
 When PRs are rejected or require changes, the agent could learn from review comments and store patterns in memory — improving code quality over successive runs.
 
 ### Cross-Repository Orchestration
-Extend the agent to work across multiple repositories — for example, updating an API server and its client SDK in coordinated PRs with compatible version bumps.
+Extend the agent to work across multiple repositories — updating an API server and its client SDK in coordinated PRs with compatible version bumps.
