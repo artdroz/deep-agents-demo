@@ -6,6 +6,8 @@
  * to avoid type mismatches with Python FilesystemMiddleware.
  */
 
+import type { GitHubState } from "@/types/github";
+
 export interface Todo {
   id: string;
   content: string;
@@ -30,10 +32,16 @@ export interface ResearchState {
   todos: Todo[];
   files: ResearchFile[];
   sources: Source[];
+  github: GitHubState;
 }
 
 export const INITIAL_STATE: ResearchState = {
   todos: [],
   files: [],
   sources: [],
+  github: {
+    context: {},
+    issues: [],
+    pullRequests: [],
+  },
 };
