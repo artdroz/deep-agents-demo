@@ -1,24 +1,28 @@
-"""
-Deep Research Assistant Agent
+"""agent.py
 
-A Deep Agents-powered research assistant that demonstrates CopilotKit's
-planning, filesystem, and subagent capabilities using Tavily for web research.
+This repo supports two modes:
+
+- research (default): original Deep Research Assistant behavior
+- coding: enables an IDE-style agent with filesystem + shell tools
+
+Mode is selected via the AGENT_MODE environment variable.
 """
 
 import os
+
+from copilotkit import CopilotKitMiddleware
+from deepagents import create_deep_agent
+from deepagents.middleware import FilesystemMiddleware
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
-from copilotkit import CopilotKitMiddleware
 
 from tools import research
 
 load_dotenv()
 
 
-# Main agent system prompt - coordinates research and synthesizes findings
-MAIN_SYSTEM_PROMPT = """You are a Deep Research Assistant, an expert at planning and
+RESEARCH_SYSTEM_PROMPT = """You are a Deep Research Assistant, an expert at planning and
 executing comprehensive research on any topic.
 
 Hard rules (ALWAYS follow):
@@ -47,25 +51,49 @@ Example workflow:
 Always maintain a professional, comprehensive research style."""
 
 
-def build_agent():
-    """Build the Deep Research Agent with CopilotKit integration.
+CODING_SYSTEM_PROMPT = """You are a Coding Agent inside an IDE.
 
-    Creates a main research coordinator agent with a researcher subagent.
-    Uses CopilotKitMiddleware for frontend state sync and generative UI.
+Hard rules (ALWAYS follow):
+- Prefer using tools over guessing.
+- Make small, safe changes and verify with execute_command when possible.
+- Keep the user updated with concise progress.
+
+Your workflow:
+1. Understand the task and write_todos with clear steps
+2. Inspect the repo (list_directory/read_file/grep) before changing anything
+3. Implement changes using write_file/edit_file
+4. Run tests/linters/build via execute_command
+5. Summarize what changed and how to verify
+
+You have access to filesystem and shell tools in coding mode."""
+
+
+def _get_agent_mode() -> str:
+    mode = (os.environ.get("AGENT_MODE") or "research").strip().lower()
+    return mode if mode in {"research", "coding"} else "research"
+
+
+def build_agent():
+    """Build the Deep Agent with CopilotKit integration.
 
     Returns:
-        Compiled LangGraph StateGraph configured for research tasks
+        Compiled LangGraph StateGraph configured for the selected mode.
     """
+
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("Missing OPENAI_API_KEY environment variable")
 
-    # Check for Tavily API key
-    tavily_key = os.environ.get("TAVILY_API_KEY")
-    if not tavily_key:
-        raise RuntimeError("Missing TAVILY_API_KEY environment variable")
+    mode = _get_agent_mode()
 
-    # Initialize LLM - use model from env or default to gpt-5.2
+    # Tavily is only required for research mode.
+    # The research tool remains registered in both modes, but it will error
+    # at runtime if used without TAVILY_API_KEY.
+    if mode == "research":
+        tavily_key = os.environ.get("TAVILY_API_KEY")
+        if not tavily_key:
+            raise RuntimeError("Missing TAVILY_API_KEY environment variable")
+
     model_name = os.environ.get("OPENAI_MODEL", "gpt-5.2")
     llm = ChatOpenAI(
         model=model_name,
@@ -73,24 +101,26 @@ def build_agent():
         api_key=api_key,
     )
 
-    # Main agent gets research tool plus built-in Deep Agents tools
-    # (write_todos, read_file, write_file)
-    # The research tool wraps an internal Deep Agent that runs via .invoke()
-    # so its text doesn't stream to the frontend
+    # Always expose research tool (optional in coding mode)
     main_tools = [research]
 
-    # Create the Deep Agent with CopilotKit middleware
-    # No subagents - research() tool handles web search internally
+    system_prompt = CODING_SYSTEM_PROMPT if mode == "coding" else RESEARCH_SYSTEM_PROMPT
+
+    # In coding mode, add Deep Agents filesystem tools via middleware.
+    # Note: execute_command is only available if the backend supports execution.
+    middleware = [CopilotKitMiddleware()]
+    if mode == "coding":
+        middleware.insert(0, FilesystemMiddleware())
+
     agent_graph = create_deep_agent(
         model=llm,
-        system_prompt=MAIN_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         tools=main_tools,
-        middleware=[CopilotKitMiddleware()],
+        middleware=middleware,
         checkpointer=MemorySaver(),
     )
 
-    print(f"[AGENT] Deep Research Agent created with model={model_name}")
+    print(f"[AGENT] Agent created with model={model_name}, mode={mode}")
     print(f"[AGENT] Main tools: {[t.name for t in main_tools]}")
 
-    # Configure recursion limit for complex research tasks
     return agent_graph.with_config({"recursion_limit": 100})
