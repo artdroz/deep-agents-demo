@@ -1,71 +1,155 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, ListTodo, FileText, Download, Globe, Check, Circle, CircleDot, X } from "lucide-react";
-import { ResearchState, Todo, ResearchFile, Source } from "@/types/research";
-import { FileViewerModal } from "@/components/FileViewerModal";
-
-// Helper function to download file content
-function downloadFile(file: ResearchFile) {
-  const blob = new Blob([file.content], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = file.path.split("/").pop() || "file.txt";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+import { useMemo, useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  File,
+  Folder,
+  ListTodo,
+  TerminalSquare,
+} from "lucide-react";
+import type { FileNode, TabState, Todo, WorkspaceState } from "@/types/workspace";
 
 interface WorkspaceProps {
-  state: ResearchState;
+  state: WorkspaceState;
 }
 
-// Collapsible section component with smooth transitions
+function extToLanguage(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "ts":
+    case "tsx":
+      return "typescript";
+    case "js":
+    case "jsx":
+      return "javascript";
+    case "json":
+      return "json";
+    case "md":
+      return "markdown";
+    case "py":
+      return "python";
+    case "css":
+      return "css";
+    case "html":
+      return "html";
+    default:
+      return "text";
+  }
+}
+
+function fileName(path: string) {
+  const parts = path.split("/").filter(Boolean);
+  return parts[parts.length - 1] || path;
+}
+
+function ensureDirPath(path: string): string {
+  return path.endsWith("/") ? path : `${path}/`;
+}
+
+function upsertFileTree(root: FileNode[], filePath: string, content?: string): FileNode[] {
+  const normalized = filePath.replace(/^\/+/, "");
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts.length === 0) return root;
+
+  // Immutable-ish copy along the way.
+  const newRoot = [...root];
+
+  let currentLevel = newRoot;
+  let currentPath = "";
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const isLast = i === parts.length - 1;
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+    const existingIdx = currentLevel.findIndex((n) => n.name === part);
+
+    if (isLast) {
+      const node: FileNode = {
+        name: part,
+        path: currentPath,
+        type: "file",
+        content,
+      };
+      if (existingIdx >= 0) {
+        const existing = currentLevel[existingIdx];
+        currentLevel[existingIdx] = {
+          ...existing,
+          ...node,
+          type: "file",
+        };
+      } else {
+        currentLevel.push(node);
+      }
+    } else {
+      const dirPath = ensureDirPath(currentPath);
+      if (existingIdx >= 0) {
+        const existing = currentLevel[existingIdx];
+        const children = existing.children ? [...existing.children] : [];
+        currentLevel[existingIdx] = {
+          ...existing,
+          name: part,
+          path: dirPath,
+          type: "dir",
+          children,
+        };
+        currentLevel = children;
+      } else {
+        const dir: FileNode = { name: part, path: dirPath, type: "dir", children: [] };
+        currentLevel.push(dir);
+        currentLevel = dir.children!;
+      }
+    }
+  }
+
+  // Sort: dirs first, then files.
+  const sortLevel = (nodes: FileNode[]) => {
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    nodes.forEach((n) => n.children && sortLevel(n.children));
+  };
+  sortLevel(newRoot);
+
+  return newRoot;
+}
+
+function upsertTab(openTabs: TabState[], tab: TabState): TabState[] {
+  const idx = openTabs.findIndex((t) => t.path === tab.path);
+  if (idx >= 0) {
+    const next = [...openTabs];
+    next[idx] = { ...next[idx], ...tab };
+    return next;
+  }
+  return [...openTabs, tab];
+}
+
 function Section({
   title,
   icon: Icon,
   children,
   defaultOpen = true,
-  badge,
 }: {
   title: string;
   icon: React.ElementType;
   children: React.ReactNode;
   defaultOpen?: boolean;
-  badge?: number;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-
   return (
     <div className="workspace-section">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="workspace-section-header w-full transition-all duration-200"
-      >
-        <div className="flex items-center gap-3">
-          <Icon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+      <button onClick={() => setIsOpen(!isOpen)} className="workspace-section-header w-full">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-[var(--color-text-secondary)]" />
           <span className="font-semibold text-[var(--color-text-primary)]">{title}</span>
-          {badge !== undefined && badge > 0 && (
-            <span
-              style={{
-                background: 'var(--color-accent)',
-                color: 'var(--color-background)',
-                padding: 'var(--space-1) var(--space-2)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'var(--font-semibold)',
-                borderRadius: 'var(--radius-lg)'
-              }}
-            >
-              {badge}
-            </span>
-          )}
         </div>
         {isOpen ? (
-          <ChevronDown className="w-5 h-5 text-[var(--color-text-tertiary)] transition-transform" />
+          <ChevronDown className="w-4 h-4 text-[var(--color-text-tertiary)]" />
         ) : (
-          <ChevronRight className="w-5 h-5 text-[var(--color-text-tertiary)] transition-transform" />
+          <ChevronRight className="w-4 h-4 text-[var(--color-text-tertiary)]" />
         )}
       </button>
       {isOpen && <div className="workspace-section-content">{children}</div>}
@@ -73,228 +157,179 @@ function Section({
   );
 }
 
-// Todo list component with animations
 function TodoList({ todos }: { todos: Todo[] }) {
-  if (todos.length === 0) {
-    return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
-        <ListTodo
-          size={32}
-          strokeWidth={1.5}
-          style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
-          }}
-        />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No tasks yet</p>
-        <p className="text-xs mt-1">Research tasks will appear here</p>
-      </div>
-    );
-  }
-
+  if (todos.length === 0) return <div className="text-sm text-[var(--color-text-tertiary)]">No tasks</div>;
   return (
     <div className="space-y-1">
-      {todos.map((todo) => (
-        <div
-          key={todo.id}
-          className={`todo-item animate-fadeSlideIn ${
-            todo.status === "completed"
-              ? "todo-item-completed"
-              : todo.status === "in_progress"
-              ? "todo-item-inprogress"
-              : "todo-item-pending"
+      {todos.map((t) => (
+        <div key={t.id} className="text-sm">
+          <span className="text-[var(--color-text-secondary)]">[{t.status}]</span> {t.content}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FileTree({
+  nodes,
+  onOpen,
+  depth = 0,
+}: {
+  nodes: FileNode[];
+  onOpen: (node: FileNode) => void;
+  depth?: number;
+}) {
+  const [openDirs, setOpenDirs] = useState<Record<string, boolean>>({});
+
+  return (
+    <div>
+      {nodes.map((n) => {
+        const isDir = n.type === "dir";
+        const isOpen = !!openDirs[n.path];
+        return (
+          <div key={n.path} style={{ paddingLeft: depth * 12 }}>
+            <button
+              className="w-full flex items-center gap-2 py-1 rounded hover:bg-[var(--color-glass-subtle)]"
+              onClick={() => {
+                if (isDir) setOpenDirs((p) => ({ ...p, [n.path]: !isOpen }));
+                else onOpen(n);
+              }}
+            >
+              {isDir ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
+              <span className="text-sm truncate">{n.name}</span>
+            </button>
+            {isDir && isOpen && n.children && n.children.length > 0 && (
+              <FileTree nodes={n.children} onOpen={onOpen} depth={depth + 1} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Tabs({
+  tabs,
+  activePath,
+  onActivate,
+}: {
+  tabs: TabState[];
+  activePath: string | null;
+  onActivate: (path: string) => void;
+}) {
+  if (tabs.length === 0) {
+    return <div className="text-sm text-[var(--color-text-tertiary)]">No files open</div>;
+  }
+  return (
+    <div className="flex gap-1 border-b border-[var(--color-border-glass)] overflow-x-auto">
+      {tabs.map((t) => (
+        <button
+          key={t.path}
+          onClick={() => onActivate(t.path)}
+          className={`px-3 py-2 text-sm whitespace-nowrap ${
+            t.path === activePath ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
           }`}
         >
-          <span
-            className={`${
-              todo.status === "completed"
-                ? "status-completed"
-                : todo.status === "in_progress"
-                ? "status-inprogress"
-                : "status-pending"
-            }`}
-          >
-            {todo.status === "completed" ? (
-              <Check size={14} />
-            ) : todo.status === "in_progress" ? (
-              <CircleDot size={14} />
-            ) : (
-              <Circle size={14} />
-            )}
-          </span>
-          <span className="text-sm">{todo.content}</span>
-        </div>
+          {fileName(t.path)}{t.isDirty ? " *" : ""}
+        </button>
       ))}
     </div>
   );
 }
 
-// File list component with click-to-view and animations
-function FileList({
-  files,
-  onFileClick,
-}: {
-  files: ResearchFile[];
-  onFileClick: (file: ResearchFile) => void;
-}) {
-  if (files.length === 0) {
-    return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
-        <FileText
-          size={32}
-          strokeWidth={1.5}
-          style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
-          }}
-        />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No files yet</p>
-        <p className="text-xs mt-1">Research artifacts will appear here</p>
-      </div>
-    );
+function Editor({ tab }: { tab: TabState | null }) {
+  if (!tab) {
+    return <div className="h-full p-4 text-sm text-[var(--color-text-tertiary)]">Select a file to view</div>;
   }
-
   return (
-    <div className="space-y-2">
-      {files.map((file, i) => (
-        <div
-          key={`${file.path}-${i}`}
-          className="file-item animate-fadeSlideIn"
-          onClick={() => onFileClick(file)}
-        >
-          <div className="flex items-center gap-3">
-            <div className="file-item-icon">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                {file.path.split("/").pop()}
-              </p>
-              <p className="text-xs text-[var(--color-text-tertiary)]">{file.path}</p>
-            </div>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation(); // Don't trigger file view on download click
-              downloadFile(file);
-            }}
-            className="p-2 rounded-lg hover:bg-[var(--color-glass-subtle)] transition-colors"
-            aria-label="Download file"
-            title="Download file"
-          >
-            <Download className="w-4 h-4 text-[var(--color-text-secondary)]" />
-          </button>
-        </div>
-      ))}
+    <div className="h-full overflow-auto">
+      <pre className="p-4 text-xs leading-5 font-mono whitespace-pre">
+        <code>{tab.content}</code>
+      </pre>
     </div>
   );
 }
 
-// Source list component with error states and animations
-function SourceList({ sources }: { sources: Source[] }) {
-  if (sources.length === 0) {
-    return (
-      <div className="empty-state" style={{ paddingTop: 'var(--space-8)', paddingBottom: 'var(--space-8)', animation: 'fadeIn 0.4s ease' }}>
-        <Globe
-          size={32}
-          strokeWidth={1.5}
-          style={{
-            color: 'var(--color-text-tertiary)',
-            marginBottom: 'var(--space-3)'
-          }}
-        />
-        <p style={{ fontSize: 'var(--text-sm)' }}>No sources yet</p>
-        <p className="text-xs mt-1">Web sources will appear here</p>
-      </div>
-    );
+function TerminalPanel({ entries }: { entries: WorkspaceState["terminal"] }) {
+  if (entries.length === 0) {
+    return <div className="text-sm text-[var(--color-text-tertiary)]">No terminal output yet</div>;
   }
-
   return (
-    <div className="space-y-2">
-      {sources.map((source, i) => (
-        <div
-          key={`${source.url}-${i}`}
-          className={`file-item animate-fadeSlideIn ${source.status === "failed" ? "source-failed" : ""}`}
-          title={source.status === "failed" ? "Failed to scrape this source" : undefined}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={`source-indicator ${
-                source.status === "scraped"
-                  ? "status-completed"
-                  : source.status === "failed"
-                  ? ""
-                  : "status-pending"
-              }`}
-              style={source.status === "failed" ? { color: 'var(--color-error)' } : undefined}
-            >
-              {source.status === "scraped" ? (
-                <Check size={14} style={{ color: 'var(--color-success)' }} />
-              ) : source.status === "failed" ? (
-                <X size={14} style={{ color: 'var(--color-error)' }} />
-              ) : (
-                <Circle size={14} />
-              )}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                {source.title || (() => {
-                  try {
-                    return new URL(source.url).hostname;
-                  } catch {
-                    return source.url.slice(0, 40);
-                  }
-                })()}
-              </p>
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] truncate block"
-              >
-                {source.url}
-              </a>
-            </div>
+    <div className="space-y-3">
+      {entries.slice(-20).map((e, idx) => (
+        <div key={`${e.timestamp}-${idx}`} className="rounded border border-[var(--color-border-glass)] overflow-hidden">
+          <div className="px-3 py-2 text-xs bg-[var(--color-glass-dark)] border-b border-[var(--color-border-glass)] font-mono">
+            $ {e.command}
           </div>
+          <pre className="p-3 text-xs font-mono whitespace-pre-wrap">
+            <code>{e.output}</code>
+          </pre>
         </div>
       ))}
     </div>
   );
 }
 
-// Main Workspace component
 export function Workspace({ state }: WorkspaceProps) {
-  const { todos, files, sources } = state;
-  const fileCount = files.length;
-  const todoCount = todos.length;
-  const sourceCount = sources.length;
+  const [localTree, setLocalTree] = useState<FileNode[]>(state.fileTree);
+  const [localTabs, setLocalTabs] = useState<TabState[]>(state.openTabs);
+  const [activeTab, setActiveTab] = useState<string | null>(state.activeTab);
 
-  // State for file viewer modal
-  const [selectedFile, setSelectedFile] = useState<ResearchFile | null>(null);
+  // Merge in any external state updates.
+  useMemo(() => {
+    setLocalTree(state.fileTree);
+    setLocalTabs(state.openTabs);
+    setActiveTab(state.activeTab);
+  }, [state.fileTree, state.openTabs, state.activeTab]);
+
+  const active = localTabs.find((t) => t.path === activeTab) || null;
 
   return (
-    <div className="workspace-panel p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Workspace</h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Research progress and artifacts
-        </p>
+    <div className="workspace-panel p-4 h-full flex flex-col">
+      <div className="mb-3">
+        <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Workspace</h2>
+        <p className="text-sm text-[var(--color-text-secondary)]">Files, editor, terminal</p>
       </div>
 
-      <Section title="Research Plan" icon={ListTodo} badge={todoCount}>
-        <TodoList todos={todos} />
-      </Section>
+      <div className="flex-1 min-h-0 grid grid-cols-[260px_1fr] gap-3">
+        {/* Left: sidebar */}
+        <div className="min-h-0 overflow-auto">
+          <Section title="Files" icon={Folder}>
+            <FileTree
+              nodes={localTree}
+              onOpen={(node) => {
+                const tab: TabState = {
+                  path: node.path,
+                  content: node.content ?? "",
+                  language: extToLanguage(node.path),
+                  isDirty: false,
+                };
+                setLocalTree((t) => upsertFileTree(t, node.path, node.content));
+                setLocalTabs((tabs) => upsertTab(tabs, tab));
+                setActiveTab(node.path);
+              }}
+            />
+          </Section>
 
-      <Section title="Files" icon={FileText} badge={fileCount}>
-        <FileList files={files} onFileClick={setSelectedFile} />
-      </Section>
+          <Section title="Todos" icon={ListTodo} defaultOpen={false}>
+            <TodoList todos={state.todos} />
+          </Section>
+        </div>
 
-      <Section title="Sources" icon={Globe} badge={sourceCount}>
-        <SourceList sources={sources} />
-      </Section>
-
-      {/* File Viewer Modal */}
-      <FileViewerModal file={selectedFile} onClose={() => setSelectedFile(null)} />
+        {/* Center: editor + bottom terminal */}
+        <div className="min-h-0 flex flex-col rounded border border-[var(--color-border-glass)] overflow-hidden">
+          <Tabs tabs={localTabs} activePath={activeTab} onActivate={setActiveTab} />
+          <div className="flex-1 min-h-0 bg-[var(--color-glass-dark)]">
+            <Editor tab={active} />
+          </div>
+          <div className="border-t border-[var(--color-border-glass)] bg-[var(--color-glass-subtle)] p-3 max-h-[35%] overflow-auto">
+            <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
+              <TerminalSquare className="w-4 h-4" /> Terminal
+            </div>
+            <TerminalPanel entries={state.terminal} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
